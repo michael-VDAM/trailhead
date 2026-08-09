@@ -20,7 +20,8 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 
 ## Workout module
 - **Plan**: program-driven calendar seeded from Michael's PT program (2-week repeating cycle ×3 = 6-week build + week-7 deload). Edit mode (✎) lets any day be reassigned. Session types: strength / plyo / swim / pz / tabata / strength60 / rest.
-- **Strength logging**: exercises from `STRENGTH_TEMPLATE`, checkbox per set, weight+reps via scroll-drum picker, **pre-filled from the most recent logged session** (`lastWeights()`).
+- **Strength logging**: exercises from `strengthTemplate()` (user-edited `plan.strengthTemplate`, falling back to `STRENGTH_TEMPLATE` — seeded from Michael's real 2026-08-08 session), checkbox per set, weight+reps via scroll-drum picker, **pre-filled from the most recent logged session** (`lastWeights()`). "✎ Edit exercises" inside the sheet: reorder/add/remove/±sets; any change becomes the default list for future sessions via `syncTemplateFromSession()`.
+- **Family shared drive** (the real source of truth for family data): `~/Library/CloudStorage/GoogleDrive-michael.columbus.ross@gmail.com/.shortcut-targets-by-id/17tH6tMkCTP3fBd0qwkmDxt5nSlX_N14b/M & F 4eva/` — contains the CURRENT `Baseline Fitness Program.xlsx` (newer than ~/Downloads), plus Car Maintenance Tracker / Home Improvement Tracker / Finances / Travel — the natural seeds for the House and future modules.
 - **Progression rules live in the docs, not the app** (PT owns them): +5 lb after 2 clean sessions, RDL/thrusters +10, weaker side sets single-leg loads, stop 2 reps shy of failure.
 - Source program: `~/Downloads/fitness-program.md`, `fitness-context-for-agents.md`, `Baseline Fitness Program.xlsx`. PT is the authority; program docs update in Downloads.
 

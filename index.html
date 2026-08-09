@@ -90,6 +90,11 @@
     .day.editable { border-style: dashed; }
     .day.editable:hover { border-color: var(--accent); }
     .day.swap-src { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 2px var(--accent); }
+    .ex-tools { display: flex; gap: 4px; }
+    .ex-tool { background: var(--panel3); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 10.5px; font-weight: 700; padding: 4px 7px; cursor: pointer; }
+    .ex-tool:hover { color: var(--accent); border-color: var(--accent); }
+    .ex-tool:disabled { opacity: 0.3; cursor: default; }
+    .ex-tool.danger:hover { color: var(--danger); border-color: var(--danger); }
     .wk-tool { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 9.5px; font-weight: 700; padding: 2px 7px; cursor: pointer; text-transform: none; letter-spacing: 0; }
     .wk-tool:hover { color: var(--accent); border-color: var(--accent); }
     @media (max-width: 640px) {
@@ -299,21 +304,37 @@ function seedPlan() {
   };
 }
 
-// Strength template — exercise, sets×reps, seed weight (from the Aug '26 sheet).
-// Weight 0 = bodyweight / not tracked yet.
+// Strength template — exercise, sets×reps, seed weight. Seeded from Michael's
+// ACTUAL 2026-08-08 session (the shared-drive spreadsheet), so first-time
+// prefill = the weights he really lifted. Weight 0 = bodyweight.
+// The live list is editable in-app and persists as plan.strengthTemplate.
 const STRENGTH_TEMPLATE = [
-  { name: 'Hamstring Curls', sets: 4, reps: 6,  w: 65 },
+  { name: 'Hamstring Curls', sets: 4, reps: 6,  w: 100 },
   { name: 'Push Ups',        sets: 3, reps: 10, w: 0 },
-  { name: 'Hip Thrusters',   sets: 3, reps: 10, w: 75 },
-  { name: 'Shoulder Press',  sets: 3, reps: 10, w: 100 },
-  { name: 'RDL',             sets: 3, reps: 10, w: 60 },
+  { name: 'Hip Thrusters',   sets: 3, reps: 10, w: 90 },
+  { name: 'Shoulder Press',  sets: 3, reps: 10, w: 120 },
+  { name: 'RDL',             sets: 2, reps: 10, w: 60 },
   { name: 'Shrugs',          sets: 3, reps: 8,  w: 80 },
-  { name: 'Lat Pull',        sets: 3, reps: 10, w: 130 },
-  { name: 'Leg Ext',         sets: 3, reps: 10, w: 100 },
+  { name: 'Lat Pull',        sets: 3, reps: 10, w: 150 },
+  { name: 'Leg Ext',         sets: 3, reps: 10, w: 130 },
   { name: 'Bench Press',     sets: 3, reps: 10, w: 0 },
-  { name: 'Leg Press',       sets: 3, reps: 10, w: 0 },
-  { name: 'Single-Leg Curl', sets: 3, reps: 10, w: 15 },
+  { name: 'Leg Press',       sets: 3, reps: 10, w: 230 },
+  { name: 'Calf Raises',     sets: 3, reps: 10, w: 260 },
+  { name: 'Row',             sets: 3, reps: 10, w: 180 },
+  { name: 'Hypers',          sets: 3, reps: 10, w: 0 },
 ];
+function strengthTemplate() {
+  return (plan && Array.isArray(plan.strengthTemplate) && plan.strengthTemplate.length)
+    ? plan.strengthTemplate : STRENGTH_TEMPLATE;
+}
+// Any list change inside a session becomes the template for future sessions.
+function syncTemplateFromSession() {
+  if (!activeSession?.exercises?.[0]?.sets) return;
+  plan.strengthTemplate = activeSession.exercises.map(ex => ({
+    name: ex.name, sets: ex.sets.length, reps: ex.sets[0]?.r || 10, w: 0,
+  }));
+  savePlan();
+}
 
 const PLYO_TEMPLATE = [
   'Pogos 4 × 20s', 'Lateral Line Hops 4 × 20s', 'Depth Drop 2 × 10', 'Broad Jump 4 × 5',
@@ -490,7 +511,7 @@ function openSession(wi, di) {
   if (st.kind === 'strength') {
     activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
       id: 's' + Date.now(), date: iso, type: d.t, done: false,
-      exercises: STRENGTH_TEMPLATE.map(t => {
+      exercises: strengthTemplate().map(t => {
         const last = lastWeights(t.name);
         return { name: t.name, done: false,
           sets: Array.from({ length: t.sets }, () => ({ r: last?.r || t.reps, w: last ? last.w : t.w, done: false })) };
@@ -509,16 +530,29 @@ function openSession(wi, di) {
   }
 }
 
+let exEditMode = false;   // reorganize the exercise list (add/remove/reorder/sets)
+
 function renderStrengthSheet(title) {
   const s = activeSession;
   openSheet(title + ' · ' + s.date, `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn${exEditMode ? ' editing' : ''}" onclick="toggleExEdit()">${exEditMode ? '✓ Done reorganizing' : '✎ Edit exercises'}</button>
+    </div>
     ${s.exercises.map((ex, xi) => {
       const last = lastWeights(ex.name);
+      const tools = exEditMode ? `
+        <span class="ex-tools">
+          <button class="ex-tool" onclick="event.stopPropagation();moveEx(${xi},-1)" ${xi === 0 ? 'disabled' : ''}>↑</button>
+          <button class="ex-tool" onclick="event.stopPropagation();moveEx(${xi},1)" ${xi === s.exercises.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="ex-tool" onclick="event.stopPropagation();setCount(${xi},-1)">−set</button>
+          <button class="ex-tool" onclick="event.stopPropagation();setCount(${xi},1)">+set</button>
+          <button class="ex-tool danger" onclick="event.stopPropagation();removeEx(${xi})">✕</button>
+        </span>` : `<span class="last">${last ? 'last: ' + (last.w ? last.w + ' lb' : 'BW') : 'first time'}</span>`;
       return `<div class="ex${ex.done ? ' done' : ''}" id="ex-${xi}">
-        <div class="ex-head" onclick="toggleExOpen(${xi})">
-          <span class="chk" onclick="event.stopPropagation();toggleExDone(${xi})">✓</span>
-          <span class="nm">${escapeHtml(ex.name)}</span>
-          <span class="last">${last ? 'last: ' + (last.w ? last.w + ' lb' : 'BW') : 'first time'}</span>
+        <div class="ex-head" onclick="${exEditMode ? '' : `toggleExOpen(${xi})`}">
+          <span class="chk" onclick="event.stopPropagation();${exEditMode ? '' : `toggleExDone(${xi})`}">✓</span>
+          <span class="nm">${escapeHtml(ex.name)}${exEditMode ? ` <span class="hint">${ex.sets.length}×${ex.sets[0]?.r || '?'}</span>` : ''}</span>
+          ${tools}
         </div>
         <div class="ex-sets" id="exsets-${xi}" style="display:none">
           ${ex.sets.map((set, si) => `
@@ -531,11 +565,43 @@ function renderStrengthSheet(title) {
         </div>
       </div>`;
     }).join('')}
+    ${exEditMode ? `<button class="btn" style="width:100%;margin-top:4px" onclick="addExercise()">＋ Add exercise</button>` : ''}
     <div class="timer-go" style="margin-top:14px">
       <button class="btn" onclick="closeSheet()">Close</button>
       <button class="btn primary" onclick="finishSession()">Finish workout ✓</button>
     </div>
-    <p class="hint" style="margin-top:10px">Weights pre-fill from your last session. Weaker side sets the load on single-leg work; stop 2 reps shy of failure.</p>`);
+    <p class="hint" style="margin-top:10px">${exEditMode
+      ? 'Changes here become your new default list for future strength days.'
+      : 'Weights pre-fill from your last session. Weaker side sets the load on single-leg work; stop 2 reps shy of failure.'}</p>`);
+}
+function toggleExEdit() { exEditMode = !exEditMode; renderStrengthOrPlyo(); }
+function moveEx(xi, dir) {
+  const a = activeSession.exercises;
+  const j = xi + dir; if (j < 0 || j >= a.length) return;
+  [a[xi], a[j]] = [a[j], a[xi]];
+  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+}
+function removeEx(xi) {
+  const ex = activeSession.exercises[xi];
+  if (!confirm('Remove "' + ex.name + '" from this workout (and the default list)?')) return;
+  activeSession.exercises.splice(xi, 1);
+  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+}
+function setCount(xi, dir) {
+  const ex = activeSession.exercises[xi];
+  if (dir > 0) {
+    const proto = ex.sets[ex.sets.length - 1] || { r: 10, w: 0 };
+    ex.sets.push({ r: proto.r, w: proto.w, done: false });
+  } else if (ex.sets.length > 1) ex.sets.pop();
+  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+}
+function addExercise() {
+  const name = (prompt('Exercise name:') || '').trim();
+  if (!name) return;
+  const last = lastWeights(name);
+  activeSession.exercises.push({ name, done: false,
+    sets: Array.from({ length: 3 }, () => ({ r: last?.r || 10, w: last?.w || 0, done: false })) });
+  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
 }
 function toggleExOpen(xi) {
   const el = document.getElementById('exsets-' + xi);
@@ -628,7 +694,7 @@ function openSheet(title, bodyHtml) {
   </div>`;
   document.body.appendChild(ov);
 }
-function closeSheet() { document.getElementById('sheet')?.remove(); }
+function closeSheet() { document.getElementById('sheet')?.remove(); exEditMode = false; }
 
 function rangeVals(min, max, step) {
   const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
