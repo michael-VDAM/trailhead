@@ -14,6 +14,9 @@
   <meta name="theme-color" content="#0d1926">
   <!-- Cloud sync (optional): Supabase JS client. App works fully without it. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Leaflet for the total-view map (pins geocoded via OpenStreetMap). -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <style>
     /* ═══════════════════════ BASE ═══════════════════════ */
     /* Alpine sunrise palette — lively on purpose. Dark = night-sky navy with
@@ -117,6 +120,14 @@
     .note-like { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 13px; padding: 9px 12px; font-family: inherit; outline: none; }
     .note-like:focus { border-color: var(--accent); }
     .group-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 16px 0 7px; }
+    button.group-title.collapsible { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; width: 100%; text-align: left; padding: 4px 0; }
+    .group-title .tri { color: var(--accent); font-size: 11px; }
+    .group-title .gcount { color: var(--muted2); font-weight: 400; }
+    .group-title.collapsible:hover { color: var(--accent); }
+    #map-canvas { height: 68vh; min-height: 420px; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; background: var(--panel); }
+    .leaflet-popup-content { font-family: inherit; font-size: 12.5px; line-height: 1.45; }
+    .leaflet-popup-content .pttl { font-weight: 700; font-size: 13.5px; }
+    .leaflet-popup-content a { color: var(--accent); }
     .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
     .card.done-card { border-color: var(--success); }
     .card .top { display: flex; align-items: baseline; gap: 8px; }
@@ -255,6 +266,7 @@
   <button class="tab-btn" data-tab="hikes" onclick="switchTab('hikes')">Hikes</button>
   <button class="tab-btn" data-tab="eats" onclick="switchTab('eats')">Eats</button>
   <button class="tab-btn" data-tab="grocery" onclick="switchTab('grocery')">Grocery</button>
+  <button class="tab-btn" data-tab="map" onclick="switchTab('map')">Map</button>
 </nav>
 
 <main>
@@ -282,6 +294,10 @@
       <button class="tile" onclick="switchTab('grocery')">
         <span class="em">🛒</span><h3>Grocery</h3>
         <p>Shared list in Trader Joe's walking order, with one-tap staples.</p>
+      </button>
+      <button class="tile" onclick="switchTab('map')">
+        <span class="em">🗺️</span><h3>Map</h3>
+        <p>Every hike and restaurant pinned on one map — done and still-to-do.</p>
       </button>
       <div class="tile soon"><span class="em">🏠</span><h3>House</h3><p>Maintenance log &amp; reminders.</p><span class="soon-pill">Coming soon</span></div>
     </div>
@@ -352,6 +368,7 @@
       <span class="hint" id="eat-count"></span>
     </div>
     <input class="note-like" id="eat-search" placeholder="Search name, cuisine, neighborhood…" oninput="eatSearch=this.value;renderEats()">
+    <div class="chip-row" id="eat-group"></div>
     <div class="chip-row" id="eat-filters"></div>
     <div id="eat-list"></div>
     <p class="hint" style="margin-top:8px">Your list + Lucia's guide + 2026 research. Closed places kept for the record. ♥ = tried it, tap again to cycle your rating.</p>
@@ -375,6 +392,17 @@
     </div>
     <div id="g-list"></div>
     <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: spices → veggies → fruit → meat → dairy → chips/nuts → alcohol → misc. Shared — you both see the same list live.</p>
+  </div>
+
+  <!-- ═══════════ MAP ═══════════ -->
+  <div class="tabpane" id="pane-map">
+    <div class="cal-head">
+      <h2 style="margin:0">The map</h2>
+      <span class="hint" id="map-count"></span>
+    </div>
+    <div class="chip-row" id="map-filters"></div>
+    <div id="map-canvas"></div>
+    <p class="hint" style="margin-top:8px">🥾 green = hikes, 🍴 orange = eats. Filled pins are done/tried, hollow are still waiting. Pins marked ≈ are placed at the park or neighborhood, not the exact door.</p>
   </div>
 </main>
 
@@ -523,6 +551,7 @@ function switchTab(t) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.body.classList.remove('nav-hidden');   // nav always returns on tab change
   scrollTo(0, 0);
+  if (t === 'map') openMap();
 }
 
 // ═════════════════════════════ HEADER MENU + NAV AUTO-HIDE ═════════════════
@@ -1119,16 +1148,16 @@ const EATS_DB = [
   ['Etch','Downtown','Upscale Dining',4,'o','o','Deb Paquette\'s globally spiced menu.','Cauliflower: best thing I\'ve ever eaten — Rachel',''],
   ['Hawkers','East Nashville','Asian Street Food',2,'o','o','Pan-Asian small plates; reopened May 2026 after a fire.','Games and casual bar',''],
   ['Smith & Lentz','East Nashville','Pizza + Brewery',2,'o','o','Craft brewery with acclaimed thin-crust pizzas.','',''],
-  ['Korea House','Charlotte Park','Korean',2,'o','o','Family-run banchan-loaded homestyle Korean. Closed Thu & Sun.','Hole in the wall but good — Fiona',''],
+  ['Korea House','Charlotte Park','Korean',2,'o','o','Family-run banchan-loaded homestyle Korean. Closed Thu & Sun.','Hole in the wall but good',''],
   ['Xiao Bao','East Nashville','Southeast Asian',2,'o','o','Okonomiyaki and bold SE Asian plates. Walk-in only; now at 830 Meridian.','Fiona\'s birthday spot',''],
-  ['Barcelona Wine Bar','Edgehill','Spanish Tapas',3,'o','o','Deep Spanish wine list and patio scene.','Fun vibe and tapas — Fiona',''],
-  ['Skull\'s Rainbow Room','Printers Alley','Supper Club',4,'o','o','1948 institution — nightly jazz, late-night burlesque.','Fun drinks and food — Fiona',''],
-  ['Bastion','Wedgewood-Houston','Tasting Menu',4,'o','o','24-seat room, weekly-changing set menu. MICHELIN STAR Nov 2025.','Jess P.','m'],
-  ['Locust','12 South','Japanese-Irish',4,'o','o','Dumplings, kakigori, duck for two — Nashville\'s toughest table. MICHELIN STAR.','Jess P.','m'],
-  ['Joyland','East Nashville','Burgers',1,'c','o','CLOSED July 2026 — Sean Brock\'s burger spot fell with its investor group.','Jess P.',''],
-  ['Monell\'s','Germantown','Southern Family-Style',2,'o','o','All-you-can-eat platters at communal tables in a Victorian mansion.','Jess P.',''],
-  ['Fatbelly Pretzel','East Nashville','Pretzels + Deli',1,'o','o','Pretzel sandwiches from the farmers-market favorite.','Jess P.',''],
-  ['Edessa','Nolensville Pike','Kurdish',2,'o','o','Anchor of America\'s largest Kurdish community — written up in the NYT.','Order from here — Jess',''],
+  ['Barcelona Wine Bar','Edgehill','Spanish Tapas',3,'o','o','Deep Spanish wine list and patio scene.','Fun vibe and tapas',''],
+  ['Skull\'s Rainbow Room','Printers Alley','Supper Club',4,'o','o','1948 institution — nightly jazz, late-night burlesque.','Fun drinks and food',''],
+  ['Bastion','Wedgewood-Houston','Tasting Menu',4,'o','o','24-seat room, weekly-changing set menu. MICHELIN STAR Nov 2025.','','m'],
+  ['Locust','12 South','Japanese-Irish',4,'o','o','Dumplings, kakigori, duck for two — Nashville\'s toughest table. MICHELIN STAR.','','m'],
+  ['Joyland','East Nashville','Burgers',1,'c','o','CLOSED July 2026 — Sean Brock\'s burger spot fell with its investor group.','',''],
+  ['Monell\'s','Germantown','Southern Family-Style',2,'o','o','All-you-can-eat platters at communal tables in a Victorian mansion.','',''],
+  ['Fatbelly Pretzel','East Nashville','Pretzels + Deli',1,'o','o','Pretzel sandwiches from the farmers-market favorite.','',''],
+  ['Edessa','Nolensville Pike','Kurdish',2,'o','o','Anchor of America\'s largest Kurdish community — written up in the NYT.','',''],
   ['BrickTop\'s','West End','American',3,'o','o','Reliable upscale-casual standby near Vanderbilt.','',''],
   ['Answer.','Sylvan Park','Small Plates',3,'o','o','Neighborhood small-plates-and-cocktails with a strong happy hour.','',''],
   ['Roze Pony','Belle Meade','All-Day Cafe',3,'o','o','Cafe Roze team\'s all-day cafe and market.','',''],
@@ -1258,12 +1287,14 @@ const EATS_DB = [
   ['Maiz de la Vida','Gulch + East','Heirloom-Corn Mexican',1,'o','n','Julio Hernandez\'s nixtamal tortillas and quesabirria; new Fonda Fina opened April 2026.','','j'],
 ].map((r, i) => ({ id: 'e' + i, name: r[0], hood: r[1], cuisine: r[2], price: r[3], status: r[4], src: r[5], blurb: r[6], us: r[7], flag: r[8] }));
 
-let eatState = {};          // id -> {tried:true, stars:0-3} — SHARED
+let eatState = {};          // id -> {tried, stars:0-3, note} — SHARED
 let eatFilter = 'all';
 let eatSearch = '';
+let eatGroup = 'hood';      // 'hood' | 'cuisine'
+const eatCollapsed = {};    // groupName -> true (per-device, not synced)
 
 function renderEats() {
-  const chips = [['all','All'],['tried','Tried ♥'],['totry','To try'],['nations','Our side of town'],['new','New finds'],['fancy','Special occasion'],['cheap','Cheap + great'],['closed','RIP']];
+  const chips = [['all','All'],['tried','Tried ♥'],['totry','To try'],['nations','Our side of town'],['fancy','Special occasion'],['cheap','Cheap + great'],['closed','RIP']];
   document.getElementById('eat-filters').innerHTML = chips.map(([k,l]) =>
     `<button class="chip${eatFilter===k?' on':''}" onclick="eatFilter='${k}';renderEats()">${l}</button>`).join('')
     + `<button class="chip dice" onclick="surpriseEat()">🎲 Where to eat?</button>`;
@@ -1279,29 +1310,69 @@ function renderEats() {
   if (q) list = list.filter(e => (e.name+' '+e.cuisine+' '+e.hood+' '+e.blurb).toLowerCase().includes(q));
   const triedN = EATS_DB.filter(e => eatState[e.id]?.tried).length;
   document.getElementById('eat-count').textContent = `${triedN} tried · ${EATS_DB.filter(e=>e.status==='o').length} open spots`;
-  const hoods = [...new Set(list.map(e => e.hood))].sort();
-  document.getElementById('eat-list').innerHTML = hoods.map(h => `<div class="group-title">${escapeHtml(h)}</div>` +
-    list.filter(e => e.hood === h).map(e => {
+  document.getElementById('eat-group').innerHTML =
+    `<button class="chip${eatGroup==='hood'?' on':''}" onclick="eatGroup='hood';renderEats()">By neighborhood</button>
+     <button class="chip${eatGroup==='cuisine'?' on':''}" onclick="eatGroup='cuisine';renderEats()">By food type</button>`;
+  const keyOf = e => eatGroup==='hood' ? e.hood : foodType(e);
+  const groups = [...new Set(list.map(keyOf))].sort();
+  document.getElementById('eat-list').innerHTML = groups.map(g => {
+    const rows = list.filter(e => keyOf(e) === g);
+    const collapsed = eatCollapsed[g];
+    return `<button class="group-title collapsible${collapsed?' closed':''}" onclick="eatCollapsed['${g.replace(/'/g,"\\'")}']=${collapsed?'false':'true'};renderEats()">
+      <span class="tri">${collapsed?'▸':'▾'}</span> ${escapeHtml(g)} <span class="gcount">${rows.length}</span></button>` +
+    (collapsed ? '' : rows.map(e => {
       const st = eatState[e.id] || {};
       return `<div class="card${st.tried?' done-card':''}">
         <div class="top">
           <span class="ttl">${escapeHtml(e.name)}</span>
-          <span class="meta">${'$'.repeat(e.price)}</span>
+          <span class="meta">${eatGroup==='cuisine'?escapeHtml(e.hood)+' · ':''}${'$'.repeat(e.price)}</span>
         </div>
-        <div class="desc">${escapeHtml(e.blurb)}${e.us?` <span class="us">Us: ${escapeHtml(e.us)}</span>`:''}</div>
+        <div class="desc">${escapeHtml(e.blurb)}${e.us?` <span class="us">Us: ${escapeHtml(e.us)}</span>`:''}${st.note?`<div class="us">📝 ${escapeHtml(st.note)}</div>`:''}</div>
         <div class="badges">
           <span class="badge">${escapeHtml(e.cuisine)}</span>
           ${e.status==='c'?'<span class="badge closed">Closed</span>':''}
           ${e.flag==='m'?'<span class="badge star">★ Michelin</span>':''}
           ${e.flag==='b'?'<span class="badge star">Bib Gourmand</span>':''}
           ${e.flag==='j'?'<span class="badge star">James Beard</span>':''}
-          ${e.src==='n'?'<span class="badge new">New find</span>':''}
-          ${e.src==='l'?'<span class="badge">Lucia</span>':''}
           ${e.status==='o'?`<a class="badge maplink" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.name + ' ' + e.hood + ' Nashville TN')}">📍 Map</a>`:''}
+          ${e.status==='o'?`<button class="badge" style="cursor:pointer" onclick="noteEat('${e.id}')">📝${st.note?'':' Note'}</button>`:''}
           ${e.status==='o'?`<button class="heart-btn${st.tried?' on':''}" onclick="toggleEat('${e.id}')">${st.tried?'♥'+'★'.repeat(st.stars||0):'♡ Tried?'}</button>`:''}
         </div>
       </div>`;
-    }).join('')).join('');
+    }).join(''));
+  }).join('');
+}
+// Collapse 100+ fine-grained cuisine labels into ~14 groupable food types.
+function foodType(e) {
+  const c = e.cuisine.toLowerCase();
+  if (/pizza/.test(c)) return 'Pizza';
+  if (/burger|hot dog/.test(c)) return 'Burgers & Dogs';
+  if (/bbq|barbe/.test(c)) return 'BBQ';
+  if (/mexican|taco|tex/.test(c)) return 'Mexican & Tacos';
+  if (/sushi|ramen|izakaya|japanese|omakase|handroll/.test(c)) return 'Japanese & Sushi';
+  if (/asian|thai|viet|pho|korean|lao|chinese|wok/.test(c)) return 'Asian';
+  if (/indian|kurdish/.test(c)) return 'Indian & Kurdish';
+  if (/mediterranean|middle east|lebanese|turkish|spanish|tapas|portug/.test(c)) return 'Mediterranean & Spanish';
+  if (/italian|pasta/.test(c)) return 'Italian';
+  if (/steak/.test(c)) return 'Steak';
+  if (/seafood|oyster/.test(c)) return 'Seafood & Oysters';
+  if (/hot chicken|chicken/.test(c)) return 'Hot Chicken';
+  if (/breakfast|brunch|cafe|coffee|bagel|bakery|donut|ice cream|pretzel|pancake|biscuit/.test(c)) return 'Breakfast, Brunch & Sweets';
+  if (/cocktail|bar|beer|wine|speakeasy|supper/.test(c)) return 'Bars & Cocktails';
+  if (/tasting|chef|fine|prix|upscale/.test(c)) return 'Tasting Menus & Fine Dining';
+  if (/deli|sandwich|meat-and-three|family|healthy|bowls/.test(c)) return 'Casual & Comfort';
+  return 'American & Southern';
+}
+function noteEat(id) {
+  const st = eatState[id] || {};
+  const v = prompt('Your note (empty to remove):', st.note || '');
+  if (v == null) return;
+  const t = v.trim();
+  if (t) eatState[id] = { ...st, note: t };
+  else if (st.tried || st.stars) { delete st.note; eatState[id] = st; }
+  else delete eatState[id];
+  try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(eatState)); } catch {}
+  cloudPush('eats'); renderEats();
 }
 // 🎲 settle the "where should we eat" debate — untried spots only.
 function surpriseEat() {
@@ -1321,6 +1392,64 @@ function toggleEat(id) {
   else delete eatState[id];
   try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(eatState)); } catch {}
   cloudPush('eats'); renderEats();
+}
+
+// ═════════════════════════════ MAP DATA ════════════════════════════════════
+// Geocoded Aug 2026 via OpenStreetMap Nominatim + Photon. GEO_APPROX ids are
+// park- or neighborhood-level placements, not exact pins (labeled in the popup).
+const GEO = {e0:[36.16228,-86.7743],e1:[36.03531,-86.97204],e10:[36.17712,-86.78936],e100:[36.16228,-86.7743],e101:[36.15157,-86.84442],e102:[36.12889,-86.77765],e103:[36.15234,-86.84552],e104:[36.14079,-86.84021],e105:[36.12223,-86.7753],e106:[36.11969,-86.75228],e107:[36.14314,-86.85993],e108:[35.92495,-86.86969],e109:[35.92451,-86.87089],e11:[36.03354,-86.79847],e110:[36.20781,-86.5806],e111:[35.92455,-86.87074],e112:[36.17614,-86.74608],e113:[36.13021,-86.85027],e114:[36.16314,-86.84975],e115:[36.14079,-86.84009],e116:[36.1443,-86.82624],e117:[36.15133,-86.85137],e118:[35.91613,-86.84138],e119:[36.14827,-86.86693],e12:[36.15776,-86.78837],e120:[36.14827,-86.86693],e121:[36.15813,-86.79556],e122:[36.00917,-86.688],e123:[36.15224,-86.84673],e124:[36.16069,-86.84831],e125:[36.14451,-86.81245],e126:[36.15229,-86.85151],e127:[36.14984,-86.81407],e128:[36.16082,-86.84968],e129:[36.16228,-86.7743],e13:[36.15343,-86.78515],e130:[36.16165,-86.84879],e131:[36.16332,-86.85121],e132:[36.16364,-86.84998],e133:[36.16229,-86.84705],e134:[36.15627,-86.84701],e135:[36.1618,-86.8488],e136:[36.16224,-86.84673],e137:[36.17106,-86.76083],e138:[36.17256,-86.75972],e139:[36.17705,-86.7611],e14:[36.16224,-86.78317],e140:[36.20468,-86.7251],e141:[36.20417,-86.72525],e142:[36.152,-86.85178],e143:[36.13841,-86.769],e144:[36.14298,-86.76867],e145:[36.15301,-86.7841],e146:[36.17307,-86.75793],e147:[36.18082,-86.68867],e148:[36.15677,-86.7746],e149:[36.09448,-86.73722],e15:[36.17256,-86.75972],e150:[36.04385,-86.71221],e151:[36.15332,-86.78451],e16:[36.17657,-86.75658],e17:[36.14374,-86.87434],e18:[36.18617,-86.76844],e19:[36.14284,-86.79175],e2:[36.17428,-86.76061],e20:[36.16459,-86.77884],e21:[36.14298,-86.76643],e22:[36.21398,-86.77081],e24:[36.17564,-86.79007],e25:[36.20083,-86.69174],e26:[36.12392,-86.75161],e27:[36.14372,-86.81446],e28:[36.15986,-86.85164],e29:[36.04535,-86.6199],e3:[36.20428,-86.72496],e30:[36.15343,-86.78515],e31:[36.17664,-86.74209],e32:[36.14171,-86.56211],e33:[36.17699,-86.7872],e34:[36.17748,-86.79283],e35:[36.13481,-86.74111],e36:[36.10019,-86.58677],e37:[36.15258,-86.83582],e38:[36.13976,-86.7705],e39:[36.16228,-86.7743],e4:[36.15144,-86.77959],e40:[36.13481,-86.74111],e41:[36.17256,-86.75972],e42:[36.18451,-86.75423],e43:[36.18557,-86.76804],e44:[36.15159,-86.59031],e45:[36.20911,-86.74941],e46:[36.16443,-86.78088],e47:[36.17861,-86.79059],e48:[36.16496,-86.7779],e5:[36.17544,-86.78794],e50:[36.25098,-86.70182],e51:[36.13067,-86.80227],e52:[36.11308,-86.76658],e53:[36.17605,-86.78672],e54:[36.15817,-86.77609],e56:[36.13481,-86.74111],e57:[36.18475,-86.7547],e58:[36.18504,-86.76782],e59:[36.17716,-86.75051],e6:[36.15229,-86.78075],e60:[36.18497,-86.75419],e61:[36.14084,-86.84041],e62:[36.16089,-86.77584],e63:[36.18166,-86.73561],e64:[36.17725,-86.78753],e66:[36.16047,-86.77976],e67:[36.18198,-86.73553],e68:[36.17679,-86.75129],e69:[36.16407,-86.78065],e7:[36.17594,-86.75687],e70:[36.15301,-86.7841],e71:[36.14298,-86.76867],e72:[36.1297,-86.84465],e73:[36.13394,-86.89183],e74:[36.15175,-86.78115],e75:[36.15457,-86.78464],e76:[36.1518,-86.78391],e77:[36.1511,-86.78336],e78:[36.15301,-86.78324],e8:[36.18187,-86.78486],e80:[36.16072,-86.77719],e81:[36.12976,-86.66723],e82:[36.16044,-86.78111],e83:[36.15534,-86.76983],e84:[36.15838,-86.76769],e85:[36.15245,-86.84329],e86:[36.15144,-86.77959],e87:[36.15776,-86.78837],e88:[36.16251,-86.84885],e89:[36.16196,-86.77449],e9:[36.17256,-86.75972],e90:[36.1181,-86.79647],e91:[36.16224,-86.78317],e92:[36.15144,-86.77959],e93:[36.15089,-86.79701],e94:[36.14291,-86.79152],e95:[36.13705,-86.80055],e96:[36.13188,-86.79594],e97:[36.15061,-86.77874],e98:[36.15057,-86.77874],e99:[36.1741,-86.78541],h0:[36.06859,-86.88513],h1:[36.06252,-86.91758],h10:[36.10391,-86.54145],h11:[35.92324,-86.92362],h12:[36.0918,-87.0267],h13:[36.10391,-86.54145],h14:[36.04461,-85.59869],h15:[36.36612,-85.68418],h16:[36.37671,-86.35555],h17:[36.25431,-85.56377],h18:[35.84508,-85.32435],h19:[36.05697,-85.61205],h2:[36.05418,-86.90926],h20:[35.96985,-87.1439],h21:[36.14402,-86.80992],h22:[36.30079,-87.11226],h23:[36.10164,-87.97545],h24:[36.10391,-86.54145],h25:[36.10391,-86.54145],h26:[35.92175,-85.00569],h27:[35.2524,-85.75206],h28:[35.18021,-85.67307],h29:[35.43982,-85.63888],h3:[36.05539,-86.79579],h30:[35.43982,-85.63888],h31:[35.43982,-85.63888],h32:[35.43982,-85.63888],h33:[35.69267,-85.37481],h34:[35.80759,-85.63721],h35:[35.80759,-85.63721],h36:[35.48381,-86.10456],h37:[35.41277,-86.17899],h38:[35.42036,-86.1361],h39:[36.08382,-87.27917],h4:[36.26646,-86.90203],h40:[36.08382,-87.27917],h41:[36.0918,-87.0267],h42:[36.0918,-87.0267],h43:[35.87459,-86.43316],h44:[36.07395,-86.40032],h45:[36.05539,-86.79579],h46:[36.0918,-87.0267],h47:[35.94959,-86.77899],h48:[36.26646,-86.90203],h49:[36.33398,-85.53226],h5:[36.26646,-86.90203],h50:[36.7455,-88.03917],h51:[36.7455,-88.03917],h52:[36.55586,-87.30464],h53:[35.46514,-87.2696],h54:[34.8524,-87.92281],h55:[36.14942,-86.92594],h56:[36.06859,-86.88513],h57:[35.21119,-85.90442],h58:[35.15361,-85.67266],h6:[35.96985,-87.1439],h7:[36.09034,-86.37638],h8:[36.16664,-86.7242],h9:[35.94959,-86.77899]};
+const GEO_APPROX = new Set(['e106','e114','e116','e121','e124','e128','e136','e137','e146','e151','h0','h10','h12','h13','h14','h15','h16','h17','h18','h19','h21','h22','h23','h24','h25','h26','h27','h28','h29','h3','h30','h31','h32','h33','h34','h35','h36','h37','h38','h39','h4','h40','h41','h42','h43','h44','h45','h46','h48','h49','h5','h50','h51','h52','h53','h54','h55','h56','h57','h58','h7']);
+
+// ═════════════════════════════ MAP VIEW ════════════════════════════════════
+// One Leaflet map with every hike and restaurant pinned. Built lazily on first
+// open (the container must be visible for Leaflet to size itself).
+let leafletMap = null, mapLayer = null;
+let mapFilter = 'all';   // all | hikes | eats | todo | done
+
+function renderMapFilters() {
+  const chips = [['all','Everything'],['hikes','🥾 Hikes'],['eats','🍴 Eats'],['todo','Still to do'],['done','Done / tried']];
+  document.getElementById('map-filters').innerHTML = chips.map(([k,l]) =>
+    `<button class="chip${mapFilter===k?' on':''}" onclick="mapFilter='${k}';drawMapPins()">${l}</button>`).join('');
+}
+function openMap() {
+  renderMapFilters();
+  if (typeof L === 'undefined') { document.getElementById('map-count').textContent = 'Map library still loading — try again in a second.'; return; }
+  if (!leafletMap) {
+    leafletMap = L.map('map-canvas', { scrollWheelZoom: true }).setView([36.0, -86.5], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18, attribution: '© OpenStreetMap contributors',
+    }).addTo(leafletMap);
+    mapLayer = L.layerGroup().addTo(leafletMap);
+  }
+  setTimeout(() => leafletMap.invalidateSize(), 60);
+  drawMapPins();
+}
+function drawMapPins() {
+  renderMapFilters();
+  if (!mapLayer) return;
+  mapLayer.clearLayers();
+  let n = 0;
+  const add = (id, name, isHike, isDone, meta, gmapsQ) => {
+    const ll = GEO[id]; if (!ll) return;
+    if (mapFilter === 'hikes' && !isHike) return;
+    if (mapFilter === 'eats' && isHike) return;
+    if (mapFilter === 'todo' && isDone) return;
+    if (mapFilter === 'done' && !isDone) return;
+    n++;
+    const color = isHike ? '#3ddc84' : '#ff8c42';
+    L.circleMarker(ll, {
+      radius: isHike ? 8 : 6, color, weight: 2,
+      fillColor: color, fillOpacity: isDone ? 0.85 : 0.12,
+    }).bindPopup(`<div class="pttl">${isHike?'🥾':'🍴'} ${escapeHtml(name)}${GEO_APPROX.has(id)?' <span style="opacity:.6">≈</span>':''}</div>
+      ${escapeHtml(meta)}${isDone ? ' · <b>✓</b>' : ''}<br>
+      <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gmapsQ)}">Directions</a>`)
+      .addTo(mapLayer);
+  };
+  for (const h of HIKES_DB)
+    add(h.id, h.name, true, !!hikeState[h.id]?.done, `${h.mi} mi · ${h.drive} min from home`, `${h.name} trailhead ${h.park} TN`);
+  for (const e of EATS_DB)
+    if (e.status === 'o') add(e.id, e.name, false, !!eatState[e.id]?.tried, `${e.cuisine} · ${e.hood}`, `${e.name} ${e.hood} Nashville TN`);
+  document.getElementById('map-count').textContent = `${n} pins`;
 }
 
 // ═════════════════════════════ GROCERY ═════════════════════════════════════

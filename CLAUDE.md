@@ -28,7 +28,9 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 ## Hikes + Eats modules (added 2026-08-09)
 - **HIKES_DB**: 59 researched trails ≤2h from The Nations (26 from their sheet, verified + corrected; 33 new finds). Fields: distance/gain/difficulty/drive-min/payoff/water tags/dogs/AllTrails URL/permit notes. Drive times from 37209.
 - **EATS_DB**: 152 Nashville restaurants — their "Self Made" list (with personal `us:` notes), Lucia's guide, and Aug-2026 research (Nations-heavy). Status o/c (Nashville closures tracked: Joyland, Pelican & Pig, Margot, Burger Up, 404 Kitchen…), Michelin/Beard flags.
-- User overlay state is **shared** (household): `hikes` (done map) and `eats` (tried + 0-3 stars map) collections, kind 'map' = union merge in pullAll.
+- User overlay state is **shared** (household): `hikes` (done map) and `eats` (tried + 0-3 stars + note map) collections, kind 'map' = union merge in pullAll.
+- **Eats UI rules**: NO source attribution shown (Michael removed Lucia/new-find badges and friend-name notes); groups (neighborhood OR `foodType()` coarse cuisine buckets) are collapsible; 📝 per-restaurant personal notes live in eatState.
+- **Map tab**: Leaflet (unpkg CDN) + `GEO` const — 206 places geocoded Aug 2026 via Nominatim/Photon; `GEO_APPROX` ids are park/neighborhood-level (61). Lazily initialized on first open. Never invent coordinates — re-geocode when adding places.
 - Source sheets: `M & F 4eva/Activities!/Local Hikes.gsheet` + `Places to Eat - Nashville.gsheet` (gsheets are cloud pointers — ask Michael to download xlsx to read).
 
 ## Grocery module (added 2026-08-09)
