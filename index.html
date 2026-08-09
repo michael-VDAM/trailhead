@@ -225,6 +225,7 @@
     .timer-set { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
     .timer-chip { background: var(--panel3); border: 1px solid var(--border); border-radius: 9px; padding: 9px 14px; font-size: 15px; font-weight: 700; cursor: pointer; color: var(--text); }
     .timer-chip .u { font-size: 10px; color: var(--muted); font-weight: 400; }
+    .quick-go { font-size: 15px; padding: 9px 16px; }
     .timer-display { font-size: 64px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: 2px; padding: 8px 0 4px; }
     .timer-phase { text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); min-height: 16px; margin-bottom: 10px; }
     .timer-card.phase-a .timer-display { color: var(--accent); }
@@ -324,6 +325,8 @@
       <h3>Repeat beeper</h3>
       <span class="hint">Beeps every interval until you stop it. Set it and lift.</span>
       <div class="timer-set">
+        <button class="btn primary quick-go" onclick="quickT1(30)">▶ 30s</button>
+        <button class="btn primary quick-go" onclick="quickT1(60)">▶ 60s</button>
         <button class="timer-chip" onclick="pickTimerVal('t1')"><span id="t1-int">30</span><span class="u"> sec</span></button>
       </div>
       <div class="timer-display" id="t1-disp">0:30</div>
@@ -930,6 +933,34 @@ async function keepAwake(on) {
   } catch {}
 }
 
+// Timer settings persist per-device — the gym phone remembers its numbers.
+const TIMER_KEY = 'trailhead-timers-v1';
+function saveTimerPrefs() {
+  try { localStorage.setItem(TIMER_KEY, JSON.stringify({ t1: t1.int, a: t2.a, b: t2.b })); } catch {}
+}
+function loadTimerPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(TIMER_KEY) || 'null');
+    if (!p) return;
+    if (p.t1 > 0) t1.int = p.t1;
+    if (p.a > 0) t2.a = p.a;
+    if (p.b > 0) t2.b = p.b;
+    document.getElementById('t1-int').textContent = t1.int;
+    document.getElementById('t1-disp').textContent = fmtClock(t1.int);
+    document.getElementById('t2-a').textContent = t2.a;
+    document.getElementById('t2-b').textContent = t2.b;
+    document.getElementById('t2-disp').textContent = fmtClock(t2.a);
+  } catch {}
+}
+// One tap on ▶ 30s / ▶ 60s: set the interval and start immediately.
+function quickT1(sec) {
+  if (t1.running) stopT1();
+  t1.int = sec;
+  document.getElementById('t1-int').textContent = sec;
+  saveTimerPrefs();
+  toggleT1();
+}
+
 // Timer 1: repeating countdown.
 const t1 = { int: 30, running: false, endAt: 0, cycles: 0, tick: null };
 function toggleT1() {
@@ -989,9 +1020,9 @@ function stopT2() {
 }
 function pickTimerVal(which) {
   const map = {
-    t1:  ['Interval (sec)', () => t1.int, v => { t1.int = v; document.getElementById('t1-int').textContent = v; if (!t1.running) document.getElementById('t1-disp').textContent = fmtClock(v); }],
-    t2a: ['Interval A (sec)', () => t2.a, v => { t2.a = v; document.getElementById('t2-a').textContent = v; if (!t2.running) document.getElementById('t2-disp').textContent = fmtClock(v); }],
-    t2b: ['Interval B (sec)', () => t2.b, v => { t2.b = v; document.getElementById('t2-b').textContent = v; }],
+    t1:  ['Interval (sec)', () => t1.int, v => { t1.int = v; document.getElementById('t1-int').textContent = v; if (!t1.running) document.getElementById('t1-disp').textContent = fmtClock(v); saveTimerPrefs(); }],
+    t2a: ['Interval A (sec)', () => t2.a, v => { t2.a = v; document.getElementById('t2-a').textContent = v; if (!t2.running) document.getElementById('t2-disp').textContent = fmtClock(v); saveTimerPrefs(); }],
+    t2b: ['Interval B (sec)', () => t2.b, v => { t2.b = v; document.getElementById('t2-b').textContent = v; saveTimerPrefs(); }],
   };
   const [title, get, set] = map[which];
   openDrum(title, rangeVals(5, 300, 5), get(), set);
@@ -1688,6 +1719,7 @@ renderCalendar();
 renderHikes();
 renderEats();
 renderGrocery();
+loadTimerPrefs();
 switchTab('home');
 cloudInit();
 </script>
