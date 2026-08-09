@@ -25,6 +25,12 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - **Progression rules live in the docs, not the app** (PT owns them): +5 lb after 2 clean sessions, RDL/thrusters +10, weaker side sets single-leg loads, stop 2 reps shy of failure.
 - Source program: `~/Downloads/fitness-program.md`, `fitness-context-for-agents.md`, `Baseline Fitness Program.xlsx`. PT is the authority; program docs update in Downloads.
 
+## Hikes + Eats modules (added 2026-08-09)
+- **HIKES_DB**: 59 researched trails ≤2h from The Nations (26 from their sheet, verified + corrected; 33 new finds). Fields: distance/gain/difficulty/drive-min/payoff/water tags/dogs/AllTrails URL/permit notes. Drive times from 37209.
+- **EATS_DB**: 152 Nashville restaurants — their "Self Made" list (with personal `us:` notes), Lucia's guide, and Aug-2026 research (Nations-heavy). Status o/c (Nashville closures tracked: Joyland, Pelican & Pig, Margot, Burger Up, 404 Kitchen…), Michelin/Beard flags.
+- User overlay state is **shared** (household): `hikes` (done map) and `eats` (tried + 0-3 stars map) collections, kind 'map' = union merge in pullAll.
+- Source sheets: `M & F 4eva/Activities!/Local Hikes.gsheet` + `Places to Eat - Nashville.gsheet` (gsheets are cloud pointers — ask Michael to download xlsx to read).
+
 ## Timers
 - Repeat beeper: one interval, beeps (Web Audio double-beep) every cycle until stopped.
 - A/B: two intervals alternating with a beep at each switch. Both request a screen wake lock.

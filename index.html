@@ -95,6 +95,35 @@
     .ex-tool:hover { color: var(--accent); border-color: var(--accent); }
     .ex-tool:disabled { opacity: 0.3; cursor: default; }
     .ex-tool.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* ═══════════════════════ HIKES + EATS ═══════════════════════ */
+    .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+    .chip { background: var(--panel3); border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11.5px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
+    .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .note-like { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 13px; padding: 9px 12px; font-family: inherit; outline: none; }
+    .note-like:focus { border-color: var(--accent); }
+    .group-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 16px 0 7px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; }
+    .card.done-card { border-color: var(--success); }
+    .card .top { display: flex; align-items: baseline; gap: 8px; }
+    .card .ttl { font-weight: 700; font-size: 14px; }
+    .card .ttl a { color: var(--text); text-decoration: none; }
+    .card .ttl a:hover { color: var(--accent); }
+    .card .meta { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+    .card .desc { font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 3px; }
+    .card .desc .us { color: var(--accent); font-weight: 600; }
+    .card .badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; align-items: center; }
+    .badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; border-radius: 4px; padding: 2px 7px; background: var(--panel3); color: var(--muted); }
+    .badge.water { color: var(--swim); }
+    .badge.hard { color: var(--danger); }
+    .badge.closed { background: var(--danger); color: #fff; }
+    .badge.star { color: var(--tabata); }
+    .badge.new { color: var(--ride); }
+    .done-btn { margin-left: auto; background: none; border: 2px solid var(--border); border-radius: 8px; color: transparent; font-size: 13px; font-weight: 700; padding: 3px 10px; cursor: pointer; }
+    .done-btn.on { background: var(--success); border-color: var(--success); color: #fff; }
+    .done-btn:not(.on):hover { color: var(--muted); }
+    .heart-btn { margin-left: auto; background: none; border: 2px solid var(--border); border-radius: 8px; color: var(--muted2); font-size: 12.5px; font-weight: 700; padding: 3px 10px; cursor: pointer; }
+    .heart-btn.on { border-color: var(--danger); color: var(--danger); }
     .wk-tool { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 9.5px; font-weight: 700; padding: 2px 7px; cursor: pointer; text-transform: none; letter-spacing: 0; }
     .wk-tool:hover { color: var(--accent); border-color: var(--accent); }
     @media (max-width: 640px) {
@@ -188,6 +217,8 @@
   <button class="tab-btn" data-tab="home" onclick="switchTab('home')">Home</button>
   <button class="tab-btn" data-tab="workout" onclick="switchTab('workout')">Workout</button>
   <button class="tab-btn" data-tab="timers" onclick="switchTab('timers')">Timers</button>
+  <button class="tab-btn" data-tab="hikes" onclick="switchTab('hikes')">Hikes</button>
+  <button class="tab-btn" data-tab="eats" onclick="switchTab('eats')">Eats</button>
 </nav>
 
 <main>
@@ -203,6 +234,14 @@
       <button class="tile" onclick="switchTab('timers')">
         <span class="em">⏱</span><h3>Timers</h3>
         <p>Repeating beeper and A/B interval timer for the gym floor.</p>
+      </button>
+      <button class="tile" onclick="switchTab('hikes')">
+        <span class="em">🥾</span><h3>Hikes</h3>
+        <p>54 researched trails within 2 hours — done, to-do, waterfalls flagged.</p>
+      </button>
+      <button class="tile" onclick="switchTab('eats')">
+        <span class="em">🍴</span><h3>Eats</h3>
+        <p>Nashville restaurants by neighborhood — yours, Lucia's, and new finds.</p>
       </button>
       <div class="tile soon"><span class="em">🛒</span><h3>Grocery</h3><p>Shared list for the two of you.</p><span class="soon-pill">Coming soon</span></div>
       <div class="tile soon"><span class="em">🏠</span><h3>House</h3><p>Maintenance log &amp; reminders.</p><span class="soon-pill">Coming soon</span></div>
@@ -254,6 +293,29 @@
       </div>
     </div>
     <p class="hint">Sound plays through your phone speaker — first Start may need the ring switch on. The screen stays awake while a timer runs.</p>
+  </div>
+
+  <!-- ═══════════ HIKES ═══════════ -->
+  <div class="tabpane" id="pane-hikes">
+    <div class="cal-head">
+      <h2 style="margin:0">Hikes</h2>
+      <span class="hint" id="hike-count"></span>
+    </div>
+    <div class="chip-row" id="hike-filters"></div>
+    <div id="hike-list"></div>
+    <p class="hint" style="margin-top:8px">Researched Aug 2026, drive times from The Nations. ✓ marks a hike done — it syncs for both of you.</p>
+  </div>
+
+  <!-- ═══════════ EATS ═══════════ -->
+  <div class="tabpane" id="pane-eats">
+    <div class="cal-head">
+      <h2 style="margin:0">Eats</h2>
+      <span class="hint" id="eat-count"></span>
+    </div>
+    <input class="note-like" id="eat-search" placeholder="Search name, cuisine, neighborhood…" oninput="eatSearch=this.value;renderEats()">
+    <div class="chip-row" id="eat-filters"></div>
+    <div id="eat-list"></div>
+    <p class="hint" style="margin-top:8px">Your list + Lucia's guide + 2026 research. Closed places kept for the record. ♥ = tried it, tap again to cycle your rating.</p>
   </div>
 </main>
 
@@ -352,6 +414,8 @@ function loadLocal() {
   if (!plan || !Array.isArray(plan.weeks) || plan.v !== PLAN_VERSION) plan = seedPlan();
   try { log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); if (!Array.isArray(log)) log = []; } catch { log = []; }
   log.forEach(l => { if (l && l.id != null) l.id = String(l.id); });
+  try { hikeState = JSON.parse(localStorage.getItem('trailhead-hikes-v1') || '{}') || {}; } catch { hikeState = {}; }
+  try { eatState = JSON.parse(localStorage.getItem('trailhead-eats-v1') || '{}') || {}; } catch { eatState = {}; }
 }
 function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} cloudPush('plan'); }
 function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
@@ -823,6 +887,334 @@ function pickTimerVal(which) {
   openDrum(title, rangeVals(5, 300, 5), get(), set);
 }
 
+// ═════════════════════════════ HIKES ═══════════════════════════════════════
+// Researched Aug 2026. Drive minutes from The Nations (37209). gain 0 = unknown.
+// diff: e/m/h · dogs: y=yes l=leash n=no ?=verify · water: space-separated tags.
+const HIKES_DB = [
+  // ——— their original list (verified + corrected) ———
+  ['Mossy Ridge Trail Loop (Gaucho Rd)','Percy Warner Park','Belle Meade',5.7,839,'m',15,'Percy Warner\'s classic ridge-and-hollow woods hike — the best true forest workout inside the city.','creek','l','https://www.alltrails.com/trail/us/tennessee/mossy-ridge-trail-loop',''],
+  ['The Old Roadway','Edwin Warner Park','Bellevue',2.1,0,'e',15,'Car-free old scenic drive — easy shaded stroll, good recovery-day option.','','l','https://www.alltrails.com/trail/us/tennessee/the-old-roadway',''],
+  ['Burch Reserve Trail','Edwin Warner Park','Nashville',3.0,383,'m',15,'Newest 250-acre Warner addition — quieter woods and meadow with a solid hill climb.','','l','https://www.alltrails.com/trail/us/tennessee/burch-reserve-trail',''],
+  ['Radnor Lake Trail','Radnor Lake SP','Oak Hill',3.0,213,'e',25,'Serene lake loop with Nashville\'s best wildlife — deer, otters, herons, eagles.','lake','n','https://www.alltrails.com/trail/us/tennessee/radnor-lake-trail--2','No dogs on nature trails'],
+  ['Henry Hollow Loop','Beaman Park','North Nashville',2.0,246,'m',25,'Creekside hollow hike through surprisingly rugged Highland Rim terrain minutes from town.','creek','l','https://www.alltrails.com/trail/us/tennessee/henry-hollow-loop-trail',''],
+  ['North Fork Laurel Woods','Beaman Park','North Nashville',5.9,554,'m',28,'The most backcountry-feeling hike this close to Nashville — steep ridges and solitude.','creek','l','https://www.alltrails.com/trail/us/tennessee/north-fork-laurel-woods-trail','Different parking lot'],
+  ['Lakes of Bowie Loop','Bowie Nature Park','Fairview',2.6,124,'e',30,'Easy shaded stroll linking several small lakes with good wildlife.','lake','l','https://www.alltrails.com/trail/us/tennessee/lakes-of-bowie-loop-trail',''],
+  ['Hidden Springs Trail','Cedars of Lebanon SP','Lebanon',4.2,157,'e',45,'Flat cedar-glade loop over karst limestone with sinkholes and hidden springs.','creek','l','https://www.alltrails.com/trail/us/tennessee/hidden-springs-trail',''],
+  ['Shelby Bottoms Greenway','Shelby Bottoms','East Nashville',8.2,91,'e',20,'Flat riverside greenway with Cumberland overlooks and boardwalks — do any length.','river','l','https://www.alltrails.com/trail/us/tennessee/shelby-bottoms-greenway-trail',''],
+  ['Marcella Vivrette Blue Trail','Smith Park','Brentwood',2.4,311,'m',30,'Perimeter ridge loop with a real climb and historic Ravenswood Mansion at the trailhead.','creek','l','https://www.alltrails.com/trail/us/tennessee/marcella-vivrette-blue-trail',''],
+  ['Volunteer Trail','Long Hunter SP','Percy Priest Lake',11.2,639,'m',35,'Long lakeshore day hike or beginner backpack along Percy Priest Lake.','lake','l','https://www.alltrails.com/trail/us/tennessee/volunteer-day-loop-trail',''],
+  ['Westhaven West & East Slopes','Westhaven','Franklin',4.6,774,'m',35,'Constant rolling elevation — best gain-per-mile near Franklin. Pair with a Franklin lunch.','','l','https://www.alltrails.com/trail/us/tennessee/westhaven-west-slope-and-east-slope-trail',''],
+  ['Hidden Lake & Ridge Loop','Harpeth River SP','Kingston Springs',2.4,203,'e',20,'Rocky bluff overlooks above a quarry-fed hidden lake plus Harpeth River frontage.','lake river','l','https://www.alltrails.com/trail/us/tennessee/hidden-lake-and-ridge-loop',''],
+  ['Jones Mill Orange Loop','Long Hunter SP','Percy Priest Lake',3.5,167,'e',35,'Rolling lakeside singletrack shared with mountain bikers — fast, flowy, mostly flat.','lake','l','https://www.alltrails.com/trail/us/tennessee/jones-mill-orange-loop','Yield to bikes'],
+  ['Burgess Falls Trail','Burgess Falls SP','Cookeville area',1.3,183,'e',85,'Four waterfalls in under a mile, capped by the 136-ft Burgess plunge — huge payoff per step.','falls river','l','https://www.alltrails.com/trail/us/tennessee/burgess-falls-trail','Base stairs closed — overlook only'],
+  ['Bearwaller Gap Trail','Cordell Hull Lake','Carthage',4.7,938,'h',70,'Rugged bluff-top lake views — the closest thing to real mountain hiking east of Nashville.','lake','l','https://www.alltrails.com/trail/us/tennessee/bearwaller-gap-trail',''],
+  ['High Ridge & Shoreline Loop','Bledsoe Creek SP','Gallatin',3.0,269,'m',45,'Wooded ridge descending to a long calm Old Hickory Lake shoreline; great birding.','lake','l','https://www.alltrails.com/trail/us/tennessee/high-ridge-trail-and-shoreline-trail-loop',''],
+  ['Cummins Falls Base Route','Cummins Falls SP','Cookeville',2.5,367,'m',90,'Swim at the base of a 75-ft waterfall in one of Tennessee\'s best swimming holes.','falls swim river','n','https://www.alltrails.com/trail/us/tennessee/cummins-falls-base-route-via-falls-overlook-trail-and-blackburn-fork','PERMIT: timed gorge pass required'],
+  ['Virgin Falls Trail','Virgin Falls SNA','Sparta',8.2,1148,'h',110,'A 110-ft fall that pours from one cave and vanishes into another — the marquee day hike of the region.','falls creek','l','https://www.alltrails.com/trail/us/tennessee/virgin-falls-trail','Childhood annual trip. Start early'],
+  ['Window Cliffs Trail','Window Cliffs SNA','Baxter',5.2,633,'h',85,'Natural rock windows through a knife-edge ridge above Cane Creek, plus a waterfall.','falls creek','n','https://www.alltrails.com/trail/us/tennessee/window-cliffs','~18 creek crossings; closes after rain'],
+  ['Bowie Perimeter Trail','Bowie Nature Park','Fairview',4.7,410,'m',30,'Wide quiet loop around 700 acres of forest, wetlands, and small lakes.','lake','l','https://www.alltrails.com/trail/us/tennessee/bowie-nature-park-perimeter-trail',''],
+  ['Old Natchez Trace: Garrison Creek','Natchez Trace','Leiper\'s Fork',3.5,360,'m',35,'Walk the 200-year-old original Trace roadbed to a War of 1812 monument.','creek','l','https://www.alltrails.com/trail/us/tennessee/old-natchez-trace-garrison-creek-to-1812-war-monument-trail',''],
+  ['Cumberland River Bicentennial Trail','Rail-trail','Ashland City',6.5,269,'e',25,'Flat rail-trail past bluffs, trestles, and Sycamore Creek wetlands — any length.','river creek','l','https://www.alltrails.com/trail/us/tennessee/cumberland-river-bicentennial-trail',''],
+  ['Pilot Knob Ridge Trail','Nathan Bedford Forrest SP','Eva (Kentucky Lake)',3.1,370,'m',90,'Ridge hike to Pilot Knob overlooking the Tennessee River at the folklife museum.','river','l','https://www.alltrails.com/trail/us/tennessee/pilot-knob-ridge-three-mile-yellow-trail',''],
+  ['Day Loop Trail','Long Hunter SP','Percy Priest Lake',3.8,262,'m',35,'The best-of segment of the Volunteer Trail — shoreline hiking without the 11-mile commitment.','lake','l','https://www.alltrails.com/trail/us/tennessee/day-loop-trail',''],
+  ['Couchville Lake Loop','Long Hunter SP','Percy Priest Lake',2.2,0,'e',35,'Flat paved loop around 110-acre Couchville Lake — accessible, shaded, labeled trees.','lake','l','https://www.alltrails.com/trail/us/tennessee/couchville-lake-loop-trail',''],
+  // ——— new finds (researched) ———
+  ['Fiery Gizzard to Raven\'s Point','South Cumberland SP','Tracy City',9.9,1289,'h',110,'The consensus best hike in Middle Tennessee — gorge cascades, Sycamore Falls, boulder fields, plateau overlook.','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/fiery-gizzard-trail-to-ravens-point',''],
+  ['Grundy Forest Day Loop','South Cumberland SP','Tracy City',2.0,300,'m',110,'The short Fiery Gizzard — Sycamore Falls and the Blue Hole swimming hole in two miles.','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/grundy-forest-day-loop',''],
+  ['Foster Falls Loop','South Cumberland SP','Sequatchie',2.0,300,'m',120,'A 60-ft plunge into one of the state\'s best legal swimming holes, with a swinging bridge.','falls swim','l','https://www.alltrails.com/trail/us/tennessee/foster-falls-loop',''],
+  ['Stone Door Trail','Savage Gulf SP','Beersheba Springs',2.1,164,'e',105,'The Great Stone Door — the best canyon panorama in Middle TN for near-zero effort.','','l','https://www.alltrails.com/trail/us/tennessee/stone-door-trail',''],
+  ['Greeter Falls Loop','Savage Gulf SP','Altamont',1.2,249,'m',110,'Spiral staircase down to Upper and Lower Greeter Falls — famous swimming hole below.','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/greeter-falls-loop',''],
+  ['Laurel–Greeter–Stone Door Loop','Savage Gulf SP','Beersheba Springs',10.2,1318,'h',105,'The full-value Savage Gulf day: two falls, rim overlooks, and the Stone Door in one loop.','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/laurel-greeter-falls-bcr-and-stone-door-loop',''],
+  ['Savage Day Loop','Savage Gulf SP','Palmer',4.2,350,'m',110,'Suspension bridge, Rattlesnake Point overlook, and Savage Falls with a sandy swimming pool.','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/savage-day-loop',''],
+  ['Fall Creek Falls Base + Overlooks','Fall Creek Falls SP','Spencer',2.7,554,'m',120,'Stand at the base of the tallest free-fall waterfall east of the Mississippi (256 ft).','falls swim creek','l','https://www.alltrails.com/trail/us/tennessee/fall-creek-falls-and-cane-creek-falls','Check storm-damage closures'],
+  ['Twin Falls / Downstream Trail','Rock Island SP','Rock Island',1.4,0,'m',90,'An 80-ft fall gushing from the gorge wall plus the famous Caney Fork Blue Hole.','falls swim river','l','https://www.alltrails.com/trail/us/tennessee/downstream-trail','TVA water-release sirens — heed them'],
+  ['Collins River Nature Trail','Rock Island SP','Rock Island',2.6,167,'e',90,'Quiet shaded riverside loop — the mellow counterpart to the Twin Falls chaos.','river','l','https://www.alltrails.com/trail/us/tennessee/collins-river-nature-trail',''],
+  ['Old Stone Fort Loop','Old Stone Fort SAP','Manchester',2.8,269,'e',65,'A 2,000-year-old ceremonial enclosure ringed by Duck River waterfalls on one easy loop.','falls swim river','l','https://www.alltrails.com/trail/us/tennessee/enclosure-moat-and-backbone-loop',''],
+  ['Machine Falls Loop','Short Springs SNA','Tullahoma',2.1,298,'m',75,'A 60-ft fan waterfall you can wade right up to — best waterfall-per-mile within 90 minutes.','falls creek swim','l','https://www.alltrails.com/trail/us/tennessee/busby-machine-falls-loop--7','Lot fills on weekends'],
+  ['Rutledge Falls','Private (public access)','Tullahoma',0.3,0,'e',75,'Picture-perfect 40-ft waterfall and swimming hole three minutes from the car — pair with Machine Falls.','falls swim','?','https://www.alltrails.com/trail/us/tennessee/rutledge-falls-trail','Private land — behave'],
+  ['Montgomery Bell North Loop','Montgomery Bell SP','Burns',5.9,580,'m',30,'The best moderate forest loop on Nashville\'s close west side — lakes, hollows, iron history.','lake creek','l','https://www.alltrails.com/trail/us/tennessee/montgomery-bell-state-park-north-loop-trail',''],
+  ['Montgomery Bell Full Circuit','Montgomery Bell SP','Burns',10.4,1167,'h',30,'A legit 10-mile training loop with real gain, 30 minutes from The Nations.','lake creek','l','https://www.alltrails.com/trail/us/tennessee/montgomery-bell-trail','Check segment closures'],
+  ['Narrows of the Harpeth','Harpeth River SP','Kingston Springs',1.0,85,'e',20,'Bluff overlook of a 5-mile river bend plus the 1818 hand-cut tunnel waterfall.','falls river swim','l','https://www.alltrails.com/trail/us/tennessee/narrows-of-the-harpeth-trail--2',''],
+  ['Mace Bluff / Mound Bottom','Harpeth River SP','Kingston Springs',1.0,0,'m',22,'Bluff-top view over a major Mississippian mound complex.','river','l','https://www.alltrails.com/trail/us/tennessee/mound-bottom-trail',''],
+  ['Stones River Battlefield Trails','Stones River NB','Murfreesboro',6.0,0,'e',40,'Flat history-dense walking through the Civil War battlefield and cedar glades.','river','l','https://www.alltrails.com/parks/us/tennessee/stones-river-national-battlefield',''],
+  ['Vesta Glade Trail','Vesta Cedar Glade SNA','Lebanon',1.6,39,'e',45,'One of the best intact limestone cedar glades anywhere — Tennessee coneflower blooms Apr-Jun.','','?','https://www.alltrails.com/trail/us/tennessee/vesta-glade-trail',''],
+  ['Couchville Cedar Glade Loop','Couchville SNA','Mt. Juliet',1.1,0,'e',30,'Open-glade landscape with the state\'s largest Tennessee coneflower population.','','?','https://www.alltrails.com/trail/us/tennessee/couchville-cedar-glade-natural-area-loop',''],
+  ['Gossett Tract Trail','Harpeth River SP','Kingston Springs',1.1,0,'e',18,'Riverside meadow loop with canoe access — the closest state-park river walk to home.','river','l','https://www.alltrails.com/trail/us/tennessee/gossett-tract-trail',''],
+  ['Smith Park West Trails','Smith Park','Brentwood',6.0,0,'m',30,'The 2024-opened sections behind Ravenswood roughly doubled the park beyond the Blue Trail.','creek','l','https://www.alltrails.com/trail/us/tennessee/black-blue-green-and-red-trails','Shared with MTB'],
+  ['Ridgetop Trail','Beaman Park','North Nashville',4.4,0,'m',25,'The quieter, longer ridge-running sibling of Henry Hollow.','creek','l','https://www.alltrails.com/trail/us/tennessee/ridgetop-trail--3',''],
+  ['Taylor Hollow Trail','Taylor Hollow SNA','Bethpage',2.5,0,'m',60,'Middle Tennessee\'s most famous spring wildflower hike — go late March to mid April.','creek','n','https://www.alltrails.com/trail/us/tennessee/taylor-hollow-trail','TNC preserve, no dogs'],
+  ['Honker Lake Trail','Land Between the Lakes','Golden Pond KY',4.5,285,'e',105,'Lake-hugging loop famous for bald eagles and winter waterfowl.','lake','l','https://www.alltrails.com/trail/us/kentucky/honker-lake-trail',''],
+  ['Hematite Lake Trail','Land Between the Lakes','Cadiz KY',2.3,0,'e',105,'Boardwalk loop around a lily-pad lake — pair with the Nature Station bison prairie.','lake','l','https://www.alltrails.com/trail/us/kentucky/hematite-lake-trail',''],
+  ['Dunbar Cave Loop','Dunbar Cave SP','Clarksville',1.9,0,'e',45,'Swan Lake, a dramatic cave mouth with prehistoric cave art, and karst woodland.','lake','l','https://www.alltrails.com/trail/us/tennessee/dunbar-cave-loop','Cave by guided tour only'],
+  ['Stillhouse Hollow Falls','Stillhouse Hollow SNA','Mount Pleasant',1.4,250,'e',70,'A 75-ft waterfall in a quiet hollow almost nobody knows exists.','falls creek','l','https://www.alltrails.com/trail/us/tennessee/stillhouse-hollow-falls-trail','Best after rain'],
+  ['Jackson Falls + Baker Bluff','Natchez Trace Pkwy','Hampshire',0.9,150,'e',65,'The Trace\'s signature two-tier waterfall over blue limestone plus the Duck River overlook.','falls creek','l','https://www.alltrails.com/trail/us/tennessee/jackson-falls-trail',''],
+  ['Bells Bend Loop','Bells Bend Park','Scottsboro',4.5,0,'e',12,'Big-sky meadow rambling directly across the Cumberland from The Nations — golden-hour birding.','river','l','https://www.alltrails.com/trail/us/tennessee/bells-bend-loop-trail','Little shade'],
+  ['Warner Woods Trail (White)','Percy Warner Park','Belle Meade',2.5,400,'m',15,'The classic old-growth Warner loop with the Luke Lea Heights downtown overlook.','','l','https://www.alltrails.com/trail/us/tennessee/warner-woods-trail',''],
+  ['Shakerag Hollow','Sewanee Domain','Sewanee',3.5,500,'m',95,'Bluff-edge walking under sandstone cliffs — the best spring wildflowers on the Plateau.','creek','l','https://www.alltrails.com/trail/us/tennessee/perimeter-trail-shakerag-hollow',''],
+  ['Denny Cove Falls','South Cumberland SP','Sequatchie',3.0,400,'m',120,'A 70-ft waterfall in the park\'s newest, quietest unit beneath world-class climbing cliffs.','falls creek','l','https://www.alltrails.com/trail/us/tennessee/denny-cove-falls-trail','Falls best Nov-May'],
+].map((r, i) => ({ id: 'h' + i, name: r[0], park: r[1], region: r[2], mi: r[3], gain: r[4], diff: r[5], drive: r[6], payoff: r[7], water: r[8], dogs: r[9], url: r[10], note: r[11] }));
+
+let hikeState = {};          // id -> {done:true} — SHARED across the household
+let hikeFilter = 'all';
+
+function renderHikes() {
+  const chips = [['all','All'],['todo','To-do'],['done','Done ✓'],['water','💧 Water'],['close','≤30 min'],['big','Big days']];
+  document.getElementById('hike-filters').innerHTML = chips.map(([k,l]) =>
+    `<button class="chip${hikeFilter===k?' on':''}" onclick="hikeFilter='${k}';renderHikes()">${l}</button>`).join('');
+  let list = HIKES_DB;
+  if (hikeFilter==='todo') list = list.filter(h => !hikeState[h.id]?.done);
+  if (hikeFilter==='done') list = list.filter(h => hikeState[h.id]?.done);
+  if (hikeFilter==='water') list = list.filter(h => /falls|swim/.test(h.water));
+  if (hikeFilter==='close') list = list.filter(h => h.drive <= 30);
+  if (hikeFilter==='big') list = list.filter(h => h.mi >= 8 || h.diff==='h');
+  const doneN = HIKES_DB.filter(h => hikeState[h.id]?.done).length;
+  document.getElementById('hike-count').textContent = `${doneN} done · ${HIKES_DB.length - doneN} to go`;
+  const buckets = [['Under 30 minutes', h=>h.drive<=30], ['30 minutes – 1 hour', h=>h.drive>30&&h.drive<=60], ['1 – 2 hours', h=>h.drive>60]];
+  const DIFF = { e:'Easy', m:'Moderate', h:'Hard' };
+  document.getElementById('hike-list').innerHTML = buckets.map(([title, fn]) => {
+    const rows = list.filter(fn).sort((a,b)=>a.drive-b.drive);
+    if (!rows.length) return '';
+    return `<div class="group-title">${title}</div>` + rows.map(h => {
+      const done = hikeState[h.id]?.done;
+      return `<div class="card${done?' done-card':''}">
+        <div class="top">
+          <span class="ttl"><a href="${h.url}" target="_blank" rel="noopener">${escapeHtml(h.name)}</a></span>
+          <span class="meta">${h.mi} mi · ${h.drive} min</span>
+        </div>
+        <div class="desc">${escapeHtml(h.payoff)}${h.note?` <span class="us">— ${escapeHtml(h.note)}</span>`:''}</div>
+        <div class="badges">
+          <span class="badge${h.diff==='h'?' hard':''}">${DIFF[h.diff]}</span>
+          ${h.gain?`<span class="badge">${h.gain} ft</span>`:''}
+          ${/falls/.test(h.water)?'<span class="badge water">Waterfall</span>':''}
+          ${/swim/.test(h.water)?'<span class="badge water">Swim hole</span>':''}
+          ${/lake/.test(h.water)?'<span class="badge water">Lake</span>':''}
+          ${h.dogs==='n'?'<span class="badge">No dogs</span>':''}
+          <span class="badge">${escapeHtml(h.park)}</span>
+          <button class="done-btn${done?' on':''}" onclick="toggleHike('${h.id}')">✓${done?' Done':''}</button>
+        </div>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+function toggleHike(id) {
+  if (hikeState[id]?.done) delete hikeState[id]; else hikeState[id] = { done: true, date: todayIso() };
+  try { localStorage.setItem('trailhead-hikes-v1', JSON.stringify(hikeState)); } catch {}
+  cloudPush('hikes'); renderHikes();
+}
+
+// ═════════════════════════════ EATS ════════════════════════════════════════
+// price 1-4 · status o=open c=closed · src o=our list, l=Lucia's guide, n=new find
+// flag: m=Michelin star, b=Bib Gourmand, j=James Beard. us = their own note.
+const EATS_DB = [
+  ['Adele\'s','Gulch','New American',3,'o','o','Elevated Southern comfort and the weekend brunch buffet.','Upscale brunch, classy and approachable',''],
+  ['Loveless Cafe','Belle Meade','Southern Breakfast',2,'o','o','1951 landmark — hot biscuits, preserves, country ham.','Can\'t go wrong',''],
+  ['Park Cafe','Sylvan Park','Brunch',3,'o','o','Cozy neighborhood bistro, dinner plus weekend brunch.','Cute spot in an old Sylvan Park home, nice back patio',''],
+  ['Mitchell Deli','East Nashville','Deli',2,'o','o','House-cured meats on custom sandwiches since 2008.','Hipster and delicious',''],
+  ['Radish Kitchen','Charlotte Ave','Healthy Bowls',1,'o','o','Quick healthy grain bowls and salads.','Make your own salad/bowl',''],
+  ['Germantown Cafe','Germantown','New American',3,'o','o','Neighborhood stalwart since 2003 with skyline views.','Where we met for blessing on marriage',''],
+  ['Kayne Prime','Gulch','Steakhouse',4,'o','o','Chef-driven boutique steakhouse — cotton-candy bacon.','Rach\'s fav steakhouse. Went after the engagement',''],
+  ['Butcher & Bee','East Nashville','Mediterranean',3,'o','o','Shareable Israeli plates — whipped feta is the signature.','Rotating menu',''],
+  ['O-Ku','Germantown','Sushi',4,'o','o','High-end sushi flying fish in from Tokyo and Hawaii.','Josh R.\'s birthday — amazing',''],
+  ['Noko','East Nashville','Wood-fired Asian',3,'o','o','Wood-fired Asian from a James Beard-semifinalist chef; books up fast.','Get the wagyu','j'],
+  ['Pelato','Germantown','Italian',3,'o','o','Tapas-style seasonal Italian with standout handmade pastas.','Non-traditional Italian next to LFM',''],
+  ['Tailor','Germantown','Indian tasting',4,'o','o','Vivek Surti\'s dinner-party tasting menu — prepaid tickets, Thu-Sun.','Josh\'s MBA friend owns it and talks the courses','j'],
+  ['Chauhan Ale & Masala House','Gulch','Indian',3,'o','o','Maneet Chauhan\'s Indian-Southern mashups.','Nicest to-go Indian around',''],
+  ['Epice','12 South','Lebanese',3,'o','o','Intimate Lebanese bistro, 11 years running.','Great people-watching around it',''],
+  ['Etch','Downtown','Upscale Dining',4,'o','o','Deb Paquette\'s globally spiced menu.','Cauliflower: best thing I\'ve ever eaten — Rachel',''],
+  ['Hawkers','East Nashville','Asian Street Food',2,'o','o','Pan-Asian small plates; reopened May 2026 after a fire.','Games and casual bar',''],
+  ['Smith & Lentz','East Nashville','Pizza + Brewery',2,'o','o','Craft brewery with acclaimed thin-crust pizzas.','',''],
+  ['Korea House','Charlotte Park','Korean',2,'o','o','Family-run banchan-loaded homestyle Korean. Closed Thu & Sun.','Hole in the wall but good — Fiona',''],
+  ['Xiao Bao','East Nashville','Southeast Asian',2,'o','o','Okonomiyaki and bold SE Asian plates. Walk-in only; now at 830 Meridian.','Fiona\'s birthday spot',''],
+  ['Barcelona Wine Bar','Edgehill','Spanish Tapas',3,'o','o','Deep Spanish wine list and patio scene.','Fun vibe and tapas — Fiona',''],
+  ['Skull\'s Rainbow Room','Printers Alley','Supper Club',4,'o','o','1948 institution — nightly jazz, late-night burlesque.','Fun drinks and food — Fiona',''],
+  ['Bastion','Wedgewood-Houston','Tasting Menu',4,'o','o','24-seat room, weekly-changing set menu. MICHELIN STAR Nov 2025.','Jess P.','m'],
+  ['Locust','12 South','Japanese-Irish',4,'o','o','Dumplings, kakigori, duck for two — Nashville\'s toughest table. MICHELIN STAR.','Jess P.','m'],
+  ['Joyland','East Nashville','Burgers',1,'c','o','CLOSED July 2026 — Sean Brock\'s burger spot fell with its investor group.','Jess P.',''],
+  ['Monell\'s','Germantown','Southern Family-Style',2,'o','o','All-you-can-eat platters at communal tables in a Victorian mansion.','Jess P.',''],
+  ['Fatbelly Pretzel','East Nashville','Pretzels + Deli',1,'o','o','Pretzel sandwiches from the farmers-market favorite.','Jess P.',''],
+  ['Edessa','Nolensville Pike','Kurdish',2,'o','o','Anchor of America\'s largest Kurdish community — written up in the NYT.','Order from here — Jess',''],
+  ['BrickTop\'s','West End','American',3,'o','o','Reliable upscale-casual standby near Vanderbilt.','',''],
+  ['Answer.','Sylvan Park','Small Plates',3,'o','o','Neighborhood small-plates-and-cocktails with a strong happy hour.','',''],
+  ['Roze Pony','Belle Meade','All-Day Cafe',3,'o','o','Cafe Roze team\'s all-day cafe and market.','',''],
+  ['Fonda','12 South','Modern Mexican',3,'o','o','Roberto Santibañez\'s modern Mexican in the old Josephine space.','',''],
+  ['Lockeland Table','East Nashville','New American',3,'o','o','Beard-nominated community kitchen — wood-fired pizzas.','',''],
+  ['Sperry\'s','Belle Meade','Steakhouse',4,'o','o','Old-school steak-and-seafood institution since 1974.','',''],
+  ['City House','Germantown','Italian-Southern',3,'o','o','Tandy Wilson\'s belly-ham pizza and Sunday Supper.','',''],
+  ['Rolf & Daughters','Germantown','Pasta',3,'o','o','Garganelli verde and modern peasant food.','',''],
+  ['The Henry','12 South','New American',3,'o','o','Glossy all-day restaurant-bar, breakfast through late night.','',''],
+  ['Iberian Pig','Gulch','Spanish Tapas',3,'o','o','Modern tapas house with a huge jamón program.','',''],
+  ['Dicey\'s Pizza','Wedgewood-Houston','Tavern Pizza',2,'o','o','Crispy tavern pies — the hot-honey Peppy Boy — in a \'70s room.','',''],
+  ['iggy\'s','Wedgewood-Houston','Italian',3,'o','o','Poli brothers\' handmade-pasta hit.','',''],
+  ['Present Tense','Wedgewood-Houston','Japanese Izakaya',3,'o','o','Japanese-French plates and a deep sake program.','',''],
+  ['The Optimist','Germantown','Seafood',4,'o','o','Sustainably sourced seafood, oysters, raw bar.','',''],
+  ['Butterlamp','East Nashville','Wine Bar + Bakery',2,'o','o','House sourdough, things-on-toast, natural wine. NYT top-25 Nashville.','',''],
+  ['Lyra','East Nashville','Middle Eastern',3,'o','o','Wood-fired modern Middle Eastern — hummus and khachapuri.','',''],
+  ['Folk','East Nashville','Pizza',3,'o','o','Naturally leavened pizzas — the clam pie is the cult slice.','',''],
+  ['Peninsula','East Nashville','Spanish-Portuguese',3,'o','o','Iberian cooking, Thu-Sat only, from a Beard-winning chef.','','j'],
+  ['Ellington\'s','Downtown','Supper Club',4,'o','o','Now mainly the "7 Paintings" ticketed dinner show — not regular dinner.','',''],
+  ['Santo','Green Hills','Mediterranean',3,'o','o','Modern Mediterranean — housemade pasta, spiced lamb.','',''],
+  ['5th & Taylor','Germantown','New American',4,'o','o','Dramatic dining hall doing upscale supper classics.','',''],
+  ['Black Rabbit','Printers Alley','Speakeasy American',3,'o','o','Prohibition-styled tavern, wood-fire cooking, live music.','',''],
+  ['Pelican & Pig','East Nashville','Wood-Fired American',3,'c','o','CLOSED March 2026 after 7 years — property-tax spike.','',''],
+  // ——— Lucia's guide (the open ones + notable losses) ———
+  ['Geist','Germantown','NOLA + Cocktails',3,'o','l','1886 blacksmith shop, Champagne Garden.','',''],
+  ['Brown\'s Diner','Hillsboro Village','Burgers',1,'o','l','Nashville\'s oldest beer license and a legendary cheeseburger.','',''],
+  ['Vui\'s Kitchen','Germantown','Vietnamese',1,'o','l','Fresh fast-casual pho and banh mi.','',''],
+  ['Henrietta Red','Germantown','Oyster Bar',3,'o','l','Julia Sullivan\'s airy oyster-centric stunner.','',''],
+  ['Butchertown Hall','Germantown','Texas BBQ',2,'o','l','Smoked meats and German beer-hall vibes.','',''],
+  ['Margot Café','East Nashville','French Country',3,'c','l','CLOSED June 2026 after 25 years — the restaurant that made East Nashville dining.','',''],
+  ['The Treehouse','East Nashville','New American',3,'o','l','Funky backyard-treehouse setting, inventive plates.','',''],
+  ['Mas Tacos Por Favor','East Nashville','Tacos',1,'o','l','Cash-only cult tacos and tortilla soup.','',''],
+  ['Redheaded Stranger','East Nashville','New Mexican',1,'o','l','Green-chile crunchwraps and totchos. Michelin Guide listed.','',''],
+  ['Five Points Pizza','East Nashville','NY Pizza',1,'o','l','The consensus best NY slice in town.','',''],
+  ['The Pharmacy','East Nashville','Burgers + Beer Garden',2,'o','l','Burgers, wursts, and one of the city\'s best beer gardens.','',''],
+  ['Rosepepper Cantina','East Nashville','Tex-Mex',2,'o','l','Margaritas and the punny marquee.','',''],
+  ['Cafe Roze','East Nashville','All-Day Cafe',2,'o','l','Stylish all-day cafe. Michelin Guide listed.','',''],
+  ['Two Ten Jack','East Nashville','Izakaya + Ramen',2,'o','l','Izakaya plates, ramen, cocktails.','',''],
+  ['Barista Parlor','East Nashville','Coffee',1,'o','l','Garage-chic third-wave coffee — flagship survived the 2026 downsizing.','',''],
+  ['Burger Up','12 South','Burgers',2,'c','l','CLOSED Aug 2026 after 16 years.','',''],
+  ['Jeni\'s','12 South','Ice Cream',1,'o','l','The line-out-the-door scoop shop.','',''],
+  ['Five Daughters Bakery','12 South','Donuts',1,'o','l','100-layer cronut-style donuts.','',''],
+  ['bartaco','12 South','Tacos',2,'o','l','Breezy tacos and rosé on the patio.','',''],
+  ['Urban Grub','12 South','Southern Seafood',3,'o','l','Renovated carwash with raw bar and dry-aged meats.','',''],
+  ['Virago','Gulch','Sushi + Robata',4,'o','l','Scene-y sushi, a Gulch institution.','',''],
+  ['Moto','Gulch','Italian',3,'o','l','Sleek Italian with housemade pastas.','',''],
+  ['Saint Añejo','Gulch','Mexican + Tequila',2,'o','l','Big tequila list, party-brunch energy.','',''],
+  ['Superica','Gulch','Tex-Mex',2,'o','l','Strong fajitas and margaritas.','',''],
+  ['Peg Leg Porker','Gulch','Memphis BBQ',2,'o','l','Carey Bringle\'s dry-rub ribs — the city\'s best-known BBQ.','',''],
+  ['Milk & Honey','Gulch','Brunch',2,'o','l','Daytime brunch crowds, 6am-3pm.','',''],
+  ['Sunda','Gulch','Pan-Asian',3,'o','l','Upscale Asian fusion.','',''],
+  ['Otaku Ramen','Gulch','Ramen',2,'o','l','Sarah Gavigan\'s Tennessee tonkotsu — the ramen benchmark.','',''],
+  ['Biscuit Love','Gulch','Southern Brunch',2,'o','l','The Bonuts and the hour-long line.','',''],
+  ['The 404 Kitchen','Gulch','New American',4,'c','l','CLOSED Jan 1 2026 after 12 years — quiet, unannounced.','',''],
+  ['Merchants','Broadway','American Bistro',3,'o','l','Upscale upstairs, casual bistro down — a Broadway refuge.','',''],
+  ['The Southern','SoBro','Steak + Oysters',3,'o','l','All-day SoBro anchor with an oyster bar.','',''],
+  ['The Farm House','SoBro','Farm-to-Table',3,'o','l','Trey Cioccia\'s farmer-to-table dinners.','',''],
+  ['Husk','Rutledge Hill','Modern Southern',4,'o','l','Ingredient-driven Southern in a historic mansion.','',''],
+  ['Pinewood Social','SoBro','All-Day + Bowling',2,'o','l','Coffee-to-cocktails hangout with vintage lanes.','',''],
+  ['Drusie & Darr','Downtown','New American',4,'o','l','Jean-Georges at the Hermitage Hotel — replaced Capitol Grille.','',''],
+  ['Stateside Kitchen','Printers Alley','Brasserie',3,'o','l','Glam hotel all-day dining.','',''],
+  ['The Mockingbird','Gulch','Modern Diner',2,'o','l','Playful upscale-diner plates.','',''],
+  ['Frothy Monkey','Downtown','All-Day Cafe',1,'o','l','Reliable breakfast-through-wine local chain.','',''],
+  ['Acme Feed & Seed','Lower Broadway','Southern Eclectic',2,'o','l','Four floors and a free rooftop — the locals\' Broadway pick.','',''],
+  ['Martin\'s Bar-B-Que','Downtown','Whole-Hog BBQ',2,'o','l','Whole-hog pits and a big beer garden.','',''],
+  ['Bakersfield','Downtown','Street Tacos',1,'o','l','Cheap, loud, good tacos and a deep tequila wall.','',''],
+  ['Arnold\'s Country Kitchen','8th Ave S','Meat-and-Three',1,'o','l','James Beard Classic — THE meat-and-three; hours in flux, verify.','','j'],
+  ['Tavern','Midtown','Gastropub',2,'o','l','Rowdy 2-for-1 brunch scene.','',''],
+  ['Old Glory','Edgehill','Cocktail Bar',2,'o','l','Dramatic bar in a 1920s boiler room.','',''],
+  ['Pancake Pantry','Hillsboro Village','Pancakes',2,'o','l','The 60-year-old pancake line.','',''],
+  ['Proper Bagel','Belmont','Bagels',2,'o','l','NY-caliber bagels and elaborate schmears.','',''],
+  ['Patterson House','Midtown','Craft Cocktails',3,'o','l','The speakeasy that started Nashville\'s cocktail scene.','',''],
+  ['The Catbird Seat','Midtown','Chef\'s Counter',4,'o','l','Relaunched 2025 — MICHELIN STAR and Beard finalist. The marquee ticket.','','m'],
+  ['DeSano Pizza','Midtown','Neapolitan Pizza',2,'o','l','Certified-Neapolitan pies in a communal hall.','',''],
+  ['etc.','Green Hills','New American',3,'o','l','Deb Paquette\'s casual sibling to Etch.','',''],
+  ['Char','Green Hills','Steakhouse',4,'o','l','Green Hills power-lunch steakhouse.','',''],
+  ['Hattie B\'s','Midtown','Hot Chicken',1,'o','l','The tourist-famous hot chicken line.','',''],
+  ['Hugh-Baby\'s','Charlotte Ave','BBQ + Burgers',1,'o','l','Pat Martin\'s scratch-made burger and BBQ counter.','',''],
+  ['Caffé Nonna','Sylvan Park','Italian',2,'o','l','Nashville\'s oldest Italian (1999), tiny neighborhood room.','',''],
+  ['Fenwick\'s 300','Melrose','Modern Diner',2,'o','l','All-day breakfast-and-lunch diner.','',''],
+  ['Love Peace & Pho','Melrose','Vietnamese',1,'o','l','Reliable pho on 8th.','',''],
+  ['M.L. Rose','Melrose','Burgers + Beer',2,'o','l','Local burger-and-tap-list mini chain.','',''],
+  ['Gray\'s on Main','Franklin','Southern + Music',3,'o','l','Historic Main St pharmacy building; survived an ownership scare.','',''],
+  ['McCreary\'s','Franklin','Irish Pub',2,'o','l','Cozy Main St pub since 2002.','',''],
+  ['Cork & Cow','Franklin','Steakhouse',4,'o','l','Franklin\'s date-night steakhouse.','',''],
+  ['Red Pony','Franklin','New American',3,'o','l','Long-running upscale Main St anchor.','',''],
+  ['55 South','Franklin','NOLA Southern',2,'o','l','Po\'boys, gumbo, oysters on Main St.','',''],
+  // ——— new finds (2026 research) ———
+  ['Lion\'s Share','Sylvan Park','Live-Fire American',3,'o','n','Buzzy 2026 fine-dining opening — Sylvan Park\'s first true destination restaurant.','',''],
+  ['Hattori Nori','The Nations','Handroll Bar',2,'o','n','Nashville\'s first dedicated handroll bar, opened 2026 in your neighborhood.','',''],
+  ['Tantisimo','Sylvan Park','Latin American',3,'o','n','Infatuation Best New 2025 — "a refined house party," walking distance from home.','',''],
+  ['Antoinette\'s Wine + Provisions','Sylvan Park','Wine Bar',2,'o','n','New neighborhood wine bar and bottle shop.','',''],
+  ['Miel','Sylvan Park','French Farm-to-Table',3,'o','n','17-year institution — the date-night anchor on your own turf.','',''],
+  ['Lola','Sylvan Park','Spanish',3,'o','n','Tapas and martinis from a former Husk chef.','',''],
+  ['Kardes','Charlotte Ave','Turkish',2,'o','n','Legit Turkish lamb and mezze in L&L Market.','',''],
+  ['PennePazze','Charlotte Ave','Italian',2,'o','n','Handmade-pasta counter good enough to expand to Germantown.','',''],
+  ['Punk Wok','Charlotte Ave','Sushi + Wok',2,'o','n','Playful sushi-and-wok — pimento-cheese crab rangoon.','',''],
+  ['Otto\'s','Charlotte Ave','Tacos + Mezcal',2,'o','n','Converted auto-garage taco-and-mezcal dive.','',''],
+  ['Streetcar Taps & Garden','Charlotte Ave','Beer Garden',2,'o','n','Restored turn-of-century building with curated taps.','',''],
+  ['Nicky\'s Coal Fired','The Nations','Coal-Fired Pizza',2,'o','n','Tennessee\'s only coal oven; great $5/$10 happy hour.','',''],
+  ['Maggie\'s Place','The Nations','Mexican + Patio',2,'o','n','Fire pits, yard games, walk-up tiki bar — Infatuation\'s #1 in The Nations.','',''],
+  ['Wendell Smith\'s','Charlotte Pike','Meat-and-Three',1,'o','n','West Nashville institution since 1952.','',''],
+  ['Centennial Cafe','Centennial Blvd','Meat-and-Three',1,'o','n','Shatteringly crispy fried chicken, hidden on your doorstep.','',''],
+  ['Bare Bones Butcher','The Nations','Butcher + Burgers',2,'o','n','Whole-animal butcher whose counter serves one of the city\'s best cheeseburgers.','',''],
+  ['Stay Golden','The Nations','Brunch + Coffee',2,'o','n','The neighborhood\'s serious brunch destination — yeasted waffles, house roastery.','',''],
+  ['Midnight Oil','The Nations','Pizza',2,'o','n','Cult buffalo-chicken pizza in a converted garage.','',''],
+  ['Daddy\'s Dogs','The Nations','Hot Dogs',1,'o','n','Creative dogs in a converted gas station.','',''],
+  ['Pepperfire','The Nations','Hot Chicken',1,'o','n','Top-tier hot chicken, no East Nashville drive needed.','',''],
+  ['Bringle\'s Smoking Oasis','The Nations','Texas BBQ',2,'o','n','Peg Leg Porker\'s Texas-brisket spinoff with a big yard.','',''],
+  ['Brightside Bakeshop','The Nations','Bakery',1,'o','n','Premium pastry with rotating monthly menus.','',''],
+  ['51st Deli','The Nations','Deli',1,'o','n','Corner-store deli beloved for pastrami and breakfast tacos.','',''],
+  ['Thai Ni Yom','The Nations','Thai',2,'o','n','Fodor\'s top-10 Nations pick.','',''],
+  ['Kase x Noko','East Nashville','Omakase',4,'o','n','Noko team\'s 14-course omakase bar — Best New 2025.','',''],
+  ['Alebrije','East Nashville','Regional Mexican',2,'o','n','The new king of Mexican food in Nashville — pozole, mushroom tacos.','',''],
+  ['Junior','East Nashville','Steak-Forward American',3,'o','n','Third restaurant from the Rolf & Daughters team.','',''],
+  ['Sho Pizza Bar','East Nashville','Japanese Pizza',2,'o','n','Michelin Bib Gourmand 2025 — Japanese-style pizza.','','b'],
+  ['Curry Boys BBQ','East Nashville','Thai x Texas BBQ',2,'o','n','San Antonio cult transplant — smoked-meat curries in the old lou space.','',''],
+  ['Bad Idea','East Nashville','Lao + Natural Wine',3,'o','n','James Beard Best New Restaurant nominee — Lao-rooted menu.','','j'],
+  ['Kisser','Wedgewood-Houston','Japanese Comfort',2,'o','n','Beard finalist 2024 — the beloved Japanese lunch counter.','','j'],
+  ['Momotaro','Wedgewood-Houston','Fine Japanese',4,'o','n','Chicago\'s acclaimed Japanese fine-dining import, opened 2026.','',''],
+  ['Zaytinya','Gulch','Eastern Mediterranean',3,'o','n','José Andrés\' 2026 Nashville debut — the year\'s biggest celebrity-chef arrival.','',''],
+  ['Turkey and the Wolf Icehouse','East Nashville','Sandwiches',2,'o','n','Mason Hereford\'s nationally famous NOLA sandwich shop\'s outpost.','',''],
+  ['Audrey','East Nashville','Modern Appalachian',4,'o','n','Sean Brock\'s flagship — the big heavy-hitter missing from your list.','','j'],
+  ['Yolan','SoBro','Fine Italian',4,'o','n','Tony Mantuano\'s love letter to Italy — the special-occasion Italian.','',''],
+  ['International Market (IM2)','Belmont','Thai',1,'o','n','1975-legacy Thai relaunched by Arnold Myint; Michelin Guide listed.','',''],
+  ['Prince\'s Hot Chicken','Assembly Hall + Nolensville','Hot Chicken',1,'o','n','The family that INVENTED hot chicken. James Beard Classic.','','j'],
+  ['Maiz de la Vida','Gulch + East','Heirloom-Corn Mexican',1,'o','n','Julio Hernandez\'s nixtamal tortillas and quesabirria; new Fonda Fina opened April 2026.','','j'],
+].map((r, i) => ({ id: 'e' + i, name: r[0], hood: r[1], cuisine: r[2], price: r[3], status: r[4], src: r[5], blurb: r[6], us: r[7], flag: r[8] }));
+
+let eatState = {};          // id -> {tried:true, stars:0-3} — SHARED
+let eatFilter = 'all';
+let eatSearch = '';
+
+function renderEats() {
+  const chips = [['all','All'],['tried','Tried ♥'],['totry','To try'],['nations','Our side of town'],['new','New finds'],['fancy','Special occasion'],['cheap','Cheap + great'],['closed','RIP']];
+  document.getElementById('eat-filters').innerHTML = chips.map(([k,l]) =>
+    `<button class="chip${eatFilter===k?' on':''}" onclick="eatFilter='${k}';renderEats()">${l}</button>`).join('');
+  const q = eatSearch.trim().toLowerCase();
+  const WEST = /nations|sylvan|charlotte|centennial|belle meade|west end/i;
+  let list = EATS_DB.filter(e => eatFilter==='closed' ? e.status==='c' : e.status==='o');
+  if (eatFilter==='tried') list = list.filter(e => eatState[e.id]?.tried);
+  if (eatFilter==='totry') list = list.filter(e => !eatState[e.id]?.tried);
+  if (eatFilter==='nations') list = list.filter(e => WEST.test(e.hood));
+  if (eatFilter==='new') list = list.filter(e => e.src==='n');
+  if (eatFilter==='fancy') list = list.filter(e => e.price>=4 || e.flag==='m');
+  if (eatFilter==='cheap') list = list.filter(e => e.price===1);
+  if (q) list = list.filter(e => (e.name+' '+e.cuisine+' '+e.hood+' '+e.blurb).toLowerCase().includes(q));
+  const triedN = EATS_DB.filter(e => eatState[e.id]?.tried).length;
+  document.getElementById('eat-count').textContent = `${triedN} tried · ${EATS_DB.filter(e=>e.status==='o').length} open spots`;
+  const hoods = [...new Set(list.map(e => e.hood))].sort();
+  document.getElementById('eat-list').innerHTML = hoods.map(h => `<div class="group-title">${escapeHtml(h)}</div>` +
+    list.filter(e => e.hood === h).map(e => {
+      const st = eatState[e.id] || {};
+      return `<div class="card${st.tried?' done-card':''}">
+        <div class="top">
+          <span class="ttl">${escapeHtml(e.name)}</span>
+          <span class="meta">${'$'.repeat(e.price)}</span>
+        </div>
+        <div class="desc">${escapeHtml(e.blurb)}${e.us?` <span class="us">Us: ${escapeHtml(e.us)}</span>`:''}</div>
+        <div class="badges">
+          <span class="badge">${escapeHtml(e.cuisine)}</span>
+          ${e.status==='c'?'<span class="badge closed">Closed</span>':''}
+          ${e.flag==='m'?'<span class="badge star">★ Michelin</span>':''}
+          ${e.flag==='b'?'<span class="badge star">Bib Gourmand</span>':''}
+          ${e.flag==='j'?'<span class="badge star">James Beard</span>':''}
+          ${e.src==='n'?'<span class="badge new">New find</span>':''}
+          ${e.src==='l'?'<span class="badge">Lucia</span>':''}
+          ${e.status==='o'?`<button class="heart-btn${st.tried?' on':''}" onclick="toggleEat('${e.id}')">${st.tried?'♥'+'★'.repeat(st.stars||0):'♡ Tried?'}</button>`:''}
+        </div>
+      </div>`;
+    }).join('')).join('');
+}
+// Tap cycles: untried → tried → tried★ → ★★ → ★★★ → untried.
+function toggleEat(id) {
+  const st = eatState[id];
+  if (!st?.tried) eatState[id] = { tried: true, stars: 0 };
+  else if ((st.stars||0) < 3) st.stars = (st.stars||0) + 1;
+  else delete eatState[id];
+  try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(eatState)); } catch {}
+  cloudPush('eats'); renderEats();
+}
+
 // ═════════════════════════════ CLOUD SYNC (Supabase, household) ═════════════
 // Same generic-JSONB pattern as Bright Cuts, but rows are keyed
 // (household_id, owner_key, collection): owner_key 'shared' for household data,
@@ -840,8 +1232,16 @@ const CLOUD_COLLECTIONS = {
   log: { owner: 'me', kind: 'array', key: 'id',
     get: () => log,
     set: v => { if (Array.isArray(v)) { log = v; try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} renderCalendar(); } } },
+  // Hike + restaurant checkmarks are SHARED — you do these together.
+  hikes: { owner: 'shared', kind: 'map',
+    get: () => hikeState,
+    set: v => { if (v && typeof v === 'object') { hikeState = v; try { localStorage.setItem('trailhead-hikes-v1', JSON.stringify(v)); } catch {} renderHikes(); } } },
+  eats: { owner: 'shared', kind: 'map',
+    get: () => eatState,
+    set: v => { if (v && typeof v === 'object') { eatState = v; try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(v)); } catch {} renderEats(); } } },
 };
 function ownerKey(coll) { return CLOUD_COLLECTIONS[coll].owner === 'me' ? cloudUser.id : 'shared'; }
+// 'map' collections (hikes/eats checkmarks) union by key, cloud wins collisions.
 
 function cloudInit() {
   const btn = document.getElementById('cloud-btn');
@@ -923,6 +1323,10 @@ async function pullAll() {
         const cloudKeys = new Set(cloudArr.map(it => it?.[coll.key]));
         if (localArr.some(it => it && !cloudKeys.has(it[coll.key]))) toPush.push(name);
         coll.set([...m.values()]);
+      } else if (coll.kind === 'map') {
+        const localObj = coll.get() || {}, cloudObj = (cloud && typeof cloud === 'object') ? cloud : {};
+        if (Object.keys(localObj).some(k => !(k in cloudObj))) toPush.push(name);
+        coll.set({ ...localObj, ...cloudObj });
       } else {
         if (cloud) coll.set(cloud); else if (coll.get()) toPush.push(name);
       }
@@ -943,6 +1347,8 @@ function unsubscribeCloud() { if (cloudChannel && sb) { sb.removeChannel(cloudCh
 applyTheme();
 loadLocal();
 renderCalendar();
+renderHikes();
+renderEats();
 switchTab('home');
 cloudInit();
 </script>
