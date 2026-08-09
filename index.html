@@ -25,12 +25,14 @@
       --success: #3ddc84; --danger: #ff5d5d;
       --strength: #ff5d5d; --plyo: #c77dff; --swim: #4cc9f0; --ride: #3ddc84; --tabata: #ffd166; --rest: #7d89b3;
     }
+    /* Light = snow day: ice-blue sky, white snowfield panels, same vivid blazes.
+       Deliberately NOT cream/parchment — that's Bright Cuts' territory. */
     [data-theme="light"] {
-      --bg: #fdf7ec; --panel: #ffffff; --panel2: #f6efdf; --panel3: #efe6d1;
-      --border: #e0d5bd; --text: #23283d; --muted: #5a617d; --muted2: #8b91a8;
-      --accent: #d64b00; --accent-soft: rgba(214,75,0,0.12);
-      --success: #0d8a4f; --danger: #cf2f4a;
-      --strength: #cf2f4a; --plyo: #7b2fd4; --swim: #0077b6; --ride: #0d8a4f; --tabata: #b07d00; --rest: #8b91a8;
+      --bg: #e7f0f9; --panel: #ffffff; --panel2: #f2f7fc; --panel3: #e2edf7;
+      --border: #c3d6e8; --text: #1c2b3a; --muted: #4f677d; --muted2: #7f97ac;
+      --accent: #e04e0a; --accent-soft: rgba(224,78,10,0.12);
+      --success: #0b8f52; --danger: #d92f4b;
+      --strength: #d92f4b; --plyo: #7d2fd9; --swim: #0079c9; --ride: #0b8f52; --tabata: #bd8500; --rest: #7f97ac;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { touch-action: manipulation; }
@@ -87,6 +89,9 @@
     .day.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; color: var(--success); font-size: 11px; font-weight: 700; }
     .day.editable { border-style: dashed; }
     .day.editable:hover { border-color: var(--accent); }
+    .day.swap-src { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 2px var(--accent); }
+    .wk-tool { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 9.5px; font-weight: 700; padding: 2px 7px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+    .wk-tool:hover { color: var(--accent); border-color: var(--accent); }
     @media (max-width: 640px) {
       .days { gap: 3px; }
       .day { min-height: 58px; padding: 4px 3px; border-radius: 7px; }
@@ -205,10 +210,11 @@
       <h2 style="margin:0">Training plan</h2>
       <span class="hint" id="cal-sub"></span>
       <div class="grow"></div>
+      <button class="btn" id="startdate-btn" onclick="changeStartDate()" style="display:none">📅 Start date</button>
       <button class="btn" id="edit-btn" onclick="toggleEdit()">✎ Edit</button>
     </div>
     <div id="calendar"></div>
-    <p class="hint" style="margin-top:6px">Tap a day to open the workout. In edit mode, tap a day to change what's scheduled — the program is yours to bend.</p>
+    <p class="hint" style="margin-top:6px">Tap a day to open the workout. In edit mode: tap a day to change or swap it, ⧉ repeats a week, 📅 moves the whole plan — the program is yours to bend.</p>
   </div>
 
   <!-- ═══════════ TIMERS ═══════════ -->
@@ -264,18 +270,22 @@ const SESSION_TYPES = {
 };
 
 // The Baseline Fitness Program, seeded from the PT program docs (Aug 2026).
-// 2-week cycle × 3 = 6-week build, then a deload week. Mon..Sun.
+// 2-week cycle × 3 = 6-week build, then a deload week. SATURDAY-start, matching
+// Michael's spreadsheet layout: Sat strength · Sun rest/tabata · Mon swim ·
+// Tue plyo+run · Wed rest/easy ride · Thu PZ ride · Fri rest.
+const PLAN_VERSION = 2;
 function seedPlan() {
   const d = (t, min) => min ? { t, min } : { t };
   const w12 = [d('strength'), d('rest'), d('swim', 30), d('plyo'), d('rest'), d('pz', 30), d('rest')];
   const w34 = [d('strength'), d('tabata', 20), d('swim', 30), d('plyo'), d('rest'), d('pz', 45), d('rest')];
   const w56 = [d('strength'), d('tabata', 25), d('swim', 40), d('plyo'), d('pz', 30), d('pz', 60), d('rest')];
   const deload = [d('strength60'), d('rest'), d('swim', 30), d('rest'), d('pz', 30), d('rest'), d('rest')];
-  // Start on the Monday of the current week.
+  // Start on the most recent Saturday.
   const now = new Date();
-  const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  const iso = mon.toISOString().slice(0, 10);
+  const sat = new Date(now); sat.setDate(now.getDate() - ((now.getDay() + 1) % 7));
+  const iso = sat.toISOString().slice(0, 10);
   return {
+    v: PLAN_VERSION,
     startDate: iso,
     weeks: [
       { label: 'Week 1 · build', days: w12 },
@@ -317,7 +327,8 @@ let editMode = false;
 
 function loadLocal() {
   try { plan = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); } catch { plan = null; }
-  if (!plan || !Array.isArray(plan.weeks)) plan = seedPlan();
+  // v2 reseeded Saturday-start (matching the spreadsheet); older seeds are replaced.
+  if (!plan || !Array.isArray(plan.weeks) || plan.v !== PLAN_VERSION) plan = seedPlan();
   try { log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); if (!Array.isArray(log)) log = []; } catch { log = []; }
   log.forEach(l => { if (l && l.id != null) l.id = String(l.id); });
 }
@@ -367,7 +378,12 @@ function switchTab(t) {
 }
 
 // ═════════════════════════════ CALENDAR ════════════════════════════════════
-const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Weekday labels come from the actual date, so the plan can start on ANY day —
+// Michael's runs Saturday-to-Friday, per his spreadsheet.
+const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function dowOf(wi, di) { return DOW_NAMES[dayDate(wi, di).getDay()]; }
+let pendingSwap = null;   // {wi,di} while waiting for the swap target tap
+
 function renderCalendar() {
   const el = document.getElementById('calendar');
   const tI = todayIso();
@@ -375,14 +391,18 @@ function renderCalendar() {
   el.innerHTML = plan.weeks.map((wk, wi) => {
     const start = dayDate(wi, 0), end = dayDate(wi, 6);
     const range = (start.getMonth() + 1) + '/' + start.getDate() + ' – ' + (end.getMonth() + 1) + '/' + end.getDate();
+    const weekTools = editMode ? `
+      <button class="wk-tool" onclick="repeatWeek(${wi})" title="Duplicate this week after itself">⧉ repeat</button>
+      ${plan.weeks.length > 1 ? `<button class="wk-tool" onclick="deleteWeek(${wi})" title="Remove this week">✕</button>` : ''}` : '';
     return `<div class="week">
-      <div class="week-label">${escapeHtml(wk.label)} <span class="range">${range}</span></div>
+      <div class="week-label">${escapeHtml(wk.label)} <span class="range">${range}</span>${weekTools}</div>
       <div class="days">${wk.days.map((d, di) => {
         const st = SESSION_TYPES[d.t] || SESSION_TYPES.rest;
         const iso = isoOf(dayDate(wi, di));
         const done = log.some(l => l.date === iso && l.done);
-        return `<div class="day${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}" onclick="dayTap(${wi},${di})">
-          <div class="dnum">${DOW[di]} ${dayDate(wi, di).getDate()}</div>
+        const swapSel = pendingSwap && pendingSwap.wi === wi && pendingSwap.di === di;
+        return `<div class="day${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" onclick="dayTap(${wi},${di})">
+          <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}</div>
           <div class="sess" style="--sess-color:${st.color}">${st.label || '·'}${d.min ? `<div class="dur">${d.min} min</div>` : ''}</div>
         </div>`;
       }).join('')}</div>
@@ -391,32 +411,70 @@ function renderCalendar() {
 }
 function toggleEdit() {
   editMode = !editMode;
+  pendingSwap = null;
   const b = document.getElementById('edit-btn');
   b.textContent = editMode ? '✓ Done editing' : '✎ Edit';
   b.classList.toggle('editing', editMode);
+  const sd = document.getElementById('startdate-btn');
+  if (sd) sd.style.display = editMode ? '' : 'none';
   renderCalendar();
 }
 function dayTap(wi, di) {
-  if (editMode) return openDayEditor(wi, di);
-  openSession(wi, di);
+  if (!editMode) return openSession(wi, di);
+  // A swap is armed: this tap is the target — exchange the two days wholesale.
+  if (pendingSwap) {
+    const a = plan.weeks[pendingSwap.wi].days[pendingSwap.di];
+    plan.weeks[pendingSwap.wi].days[pendingSwap.di] = plan.weeks[wi].days[di];
+    plan.weeks[wi].days[di] = a;
+    pendingSwap = null;
+    savePlan(); renderCalendar();
+    showToast('Days swapped ↔');
+    return;
+  }
+  openDayEditor(wi, di);
 }
 
-// Edit mode: pick what a day is.
+// Edit mode: pick what a day is, or arm a swap.
 function openDayEditor(wi, di) {
   const opts = [
     ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
     ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['strength60', 'Deload Strength'], ['rest', 'Rest'],
   ];
-  openSheet(`${DOW[di]}, ${escapeHtml(plan.weeks[wi].label)}`, `
+  openSheet(`${dowOf(wi, di)}, ${escapeHtml(plan.weeks[wi].label)}`, `
     <div class="sess-pick">
+      <button style="grid-column:1/-1;border-color:var(--accent);color:var(--accent)" onclick="armSwap(${wi},${di})">↔ Move / swap with another day…</button>
       ${opts.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}</button>`).join('')}
     </div>
-    <p class="hint" style="margin-top:12px">Rides and swims will ask for minutes when you log them — the plan just holds the shape of the week.</p>`);
+    <p class="hint" style="margin-top:12px">Swap moves the whole day. Rides and swims ask for minutes when you log them.</p>`);
+}
+function armSwap(wi, di) {
+  pendingSwap = { wi, di };
+  closeSheet(); renderCalendar();
+  showToast('Now tap the day to swap it with');
 }
 function setDay(wi, di, t) {
   const keep = plan.weeks[wi].days[di].min;
   plan.weeks[wi].days[di] = t === 'rest' ? { t } : { t, min: keep };
   savePlan(); closeSheet(); renderCalendar();
+}
+function repeatWeek(wi) {
+  const copy = JSON.parse(JSON.stringify(plan.weeks[wi]));
+  copy.label = copy.label.replace(/\s*\(again\)$/, '') + ' (again)';
+  plan.weeks.splice(wi + 1, 0, copy);
+  savePlan(); renderCalendar();
+  showToast('Week repeated — everything after it shifts a week later');
+}
+function deleteWeek(wi) {
+  if (!confirm('Remove "' + plan.weeks[wi].label + '"? Days after it shift a week earlier.')) return;
+  plan.weeks.splice(wi, 1);
+  savePlan(); renderCalendar();
+}
+function changeStartDate() {
+  const v = (prompt('Plan start date (YYYY-MM-DD).\nEvery week shifts to match — logged workouts stay on their original dates.', plan.startDate) || '').trim();
+  if (!v) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v + 'T12:00:00'))) { alert('Use YYYY-MM-DD, e.g. 2026-08-08'); return; }
+  plan.startDate = v;
+  savePlan(); renderCalendar();
 }
 
 // ═════════════════════════════ SESSION VIEW / LOGGING ══════════════════════
