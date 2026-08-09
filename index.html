@@ -11,19 +11,20 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Trailhead">
-  <meta name="theme-color" content="#171e33">
+  <meta name="theme-color" content="#0d1926">
   <!-- Cloud sync (optional): Supabase JS client. App works fully without it. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* ═══════════════════════ BASE ═══════════════════════ */
     /* Alpine sunrise palette — lively on purpose. Dark = night-sky navy with
        vivid trail-blaze accents; light = bright snowfield with the same punch. */
+    /* Dark = glacier night: deep ice-blue instead of purple-navy, same vivid blazes. */
     :root {
-      --bg: #171e33; --panel: #1f2947; --panel2: #273356; --panel3: #303e66;
-      --border: #3d4d7a; --text: #f2f4ff; --muted: #a9b4d8; --muted2: #7d89b3;
+      --bg: #0d1926; --panel: #142638; --panel2: #1a3049; --panel3: #21405c;
+      --border: #2e5578; --text: #ecf5ff; --muted: #9dbdd6; --muted2: #6d8faa;
       --accent: #ff8c42; --accent-soft: rgba(255,140,66,0.18);
-      --success: #3ddc84; --danger: #ff5d5d;
-      --strength: #ff5d5d; --plyo: #c77dff; --swim: #4cc9f0; --ride: #3ddc84; --tabata: #ffd166; --rest: #7d89b3;
+      --success: #3ddc84; --danger: #ff5d6c;
+      --strength: #ff5d6c; --plyo: #c77dff; --swim: #52d5f2; --ride: #3ddc84; --tabata: #ffd166; --rest: #6d8faa;
     }
     /* Light = snow day: ice-blue sky, white snowfield panels, same vivid blazes.
        Deliberately NOT cream/parchment — that's Bright Cuts' territory. */
@@ -40,7 +41,14 @@
     button { font-family: inherit; }
 
     /* ═══════════════════════ HEADER ═══════════════════════ */
-    header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 100; }
+    header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 100; transition: transform 0.22s ease; }
+    /* Mobile: header + tabs slide away on scroll down, return on scroll up. */
+    body.nav-hidden header { transform: translateY(-110%); }
+    body.nav-hidden nav.tabs { transform: translateY(-160%); }
+    nav.tabs { transition: transform 0.22s ease; }
+    .header-menu-wrap { position: relative; }
+    .header-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 8px; flex-direction: column; gap: 6px; min-width: 150px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); z-index: 200; }
+    .header-menu.open { display: flex; }
     .brand { display: flex; align-items: center; gap: 9px; cursor: pointer; }
     .brand svg { width: 32px; height: 32px; flex-shrink: 0; }
     .brand h1 { font-size: 17px; letter-spacing: 0.3px; }
@@ -74,19 +82,25 @@
     .cal-head .grow { flex: 1; }
     .btn { background: var(--panel3); border: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 600; padding: 8px 13px; border-radius: 8px; cursor: pointer; }
     .btn:hover { border-color: var(--accent); }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #171e33; font-weight: 700; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #0d1926; font-weight: 700; }
     [data-theme="light"] .btn.primary { color: #fff; }
     .btn.editing { background: var(--danger); border-color: var(--danger); color: #fff; }
     .week { margin-bottom: 14px; }
     .week-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; align-items: baseline; }
     .week-label .range { font-weight: 400; color: var(--muted2); text-transform: none; letter-spacing: 0; }
     .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-    .day { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 6px 5px; min-height: 66px; cursor: pointer; position: relative; }
+    .day { background: color-mix(in srgb, var(--sess-color, var(--panel)) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--sess-color, var(--border)) 35%, var(--border)); border-radius: 10px; padding: 6px 5px; min-height: 74px; cursor: pointer; position: relative; transition: transform 0.1s; }
+    .day:active { transform: scale(0.96); }
+    .day.sess-rest { background: var(--panel); border-color: var(--border); opacity: 0.65; }
     .day .dnum { font-size: 9.5px; color: var(--muted2); font-weight: 600; }
-    .day .sess { margin-top: 4px; font-size: 10px; font-weight: 700; line-height: 1.25; color: var(--sess-color, var(--muted)); }
+    .day .sess-em { font-size: 17px; line-height: 1.3; margin-top: 1px; }
+    .day .sess { font-size: 9.5px; font-weight: 800; line-height: 1.25; color: var(--sess-color, var(--muted)); }
     .day .dur { font-size: 9px; color: var(--muted); font-weight: 400; }
-    .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-    .day.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; color: var(--success); font-size: 11px; font-weight: 700; }
+    .day.today { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    /* A done day fills green — the whole cell celebrates, not a tiny checkmark. */
+    .day.done { background: color-mix(in srgb, var(--success) 26%, var(--panel)); border-color: var(--success); opacity: 1; }
+    .day.done .sess { color: var(--success); }
+    .day.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; color: var(--success); font-size: 13px; font-weight: 800; }
     .day.editable { border-style: dashed; }
     .day.editable:hover { border-color: var(--accent); }
     .day.swap-src { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 2px var(--accent); }
@@ -124,6 +138,22 @@
     .done-btn:not(.on):hover { color: var(--muted); }
     .heart-btn { margin-left: auto; background: none; border: 2px solid var(--border); border-radius: 8px; color: var(--muted2); font-size: 12.5px; font-weight: 700; padding: 3px 10px; cursor: pointer; }
     .heart-btn.on { border-color: var(--danger); color: var(--danger); }
+    .badge.maplink { text-decoration: none; color: var(--accent); cursor: pointer; }
+    .chip.dice { border-color: var(--accent); color: var(--accent); }
+
+    /* ═══════════════════════ GROCERY ═══════════════════════ */
+    .g-add { display: flex; gap: 8px; margin-bottom: 6px; }
+    .g-add input { flex: 1; }
+    .g-cat-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+    .g-item { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; margin-bottom: 6px; cursor: pointer; }
+    .g-item .g-chk { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 13px; font-weight: 800; }
+    .g-item .g-nm { font-size: 14px; font-weight: 600; flex: 1; }
+    .g-item .g-x { background: none; border: none; color: var(--muted2); font-size: 15px; cursor: pointer; padding: 2px 6px; }
+    .g-item .g-x:hover { color: var(--danger); }
+    .g-item.got { opacity: 0.5; }
+    .g-item.got .g-chk { background: var(--success); border-color: var(--success); color: #fff; }
+    .g-item.got .g-nm { text-decoration: line-through; }
+    .g-actions { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
     .wk-tool { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 9.5px; font-weight: 700; padding: 2px 7px; cursor: pointer; text-transform: none; letter-spacing: 0; }
     .wk-tool:hover { color: var(--accent); border-color: var(--accent); }
     @media (max-width: 640px) {
@@ -209,8 +239,13 @@
     <div><h1>Trailhead</h1><span class="sub">Ross House</span></div>
   </div>
   <div class="header-spacer"></div>
-  <button class="header-action" onclick="cloudAccountClick()" id="cloud-btn" style="display:none">☁ Sign in</button>
-  <button class="header-action" onclick="toggleTheme()" id="theme-btn">🌙</button>
+  <div class="header-menu-wrap">
+    <button class="header-action" onclick="toggleHeaderMenu(event)" id="menu-btn" aria-label="Menu">☰</button>
+    <div class="header-menu" id="header-menu">
+      <button class="header-action" onclick="cloudAccountClick()" id="cloud-btn" style="display:none">☁ Sign in</button>
+      <button class="header-action" onclick="toggleTheme()" id="theme-btn">🌙 Theme</button>
+    </div>
+  </div>
 </header>
 
 <nav class="tabs" id="tabs">
@@ -219,6 +254,7 @@
   <button class="tab-btn" data-tab="timers" onclick="switchTab('timers')">Timers</button>
   <button class="tab-btn" data-tab="hikes" onclick="switchTab('hikes')">Hikes</button>
   <button class="tab-btn" data-tab="eats" onclick="switchTab('eats')">Eats</button>
+  <button class="tab-btn" data-tab="grocery" onclick="switchTab('grocery')">Grocery</button>
 </nav>
 
 <main>
@@ -243,7 +279,10 @@
         <span class="em">🍴</span><h3>Eats</h3>
         <p>Nashville restaurants by neighborhood — yours, Lucia's, and new finds.</p>
       </button>
-      <div class="tile soon"><span class="em">🛒</span><h3>Grocery</h3><p>Shared list for the two of you.</p><span class="soon-pill">Coming soon</span></div>
+      <button class="tile" onclick="switchTab('grocery')">
+        <span class="em">🛒</span><h3>Grocery</h3>
+        <p>Shared list in Trader Joe's walking order, with one-tap staples.</p>
+      </button>
       <div class="tile soon"><span class="em">🏠</span><h3>House</h3><p>Maintenance log &amp; reminders.</p><span class="soon-pill">Coming soon</span></div>
     </div>
   </div>
@@ -317,6 +356,26 @@
     <div id="eat-list"></div>
     <p class="hint" style="margin-top:8px">Your list + Lucia's guide + 2026 research. Closed places kept for the record. ♥ = tried it, tap again to cycle your rating.</p>
   </div>
+
+  <!-- ═══════════ GROCERY ═══════════ -->
+  <div class="tabpane" id="pane-grocery">
+    <div class="cal-head">
+      <h2 style="margin:0">Grocery</h2>
+      <span class="hint" id="g-count"></span>
+    </div>
+    <div class="g-add">
+      <input class="note-like" id="g-input" placeholder="Add an item…" onkeydown="if(event.key==='Enter')addGrocery()">
+      <button class="btn primary" onclick="addGrocery()">Add</button>
+    </div>
+    <div class="g-cat-row" id="g-cats"></div>
+    <div class="g-actions">
+      <button class="btn" onclick="addStaples()">⭐ Add staples</button>
+      <button class="btn" onclick="editStaples()">✎ Edit staples</button>
+      <button class="btn" onclick="clearGotten()">Clear checked</button>
+    </div>
+    <div id="g-list"></div>
+    <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: spices → veggies → fruit → meat → dairy → chips/nuts → alcohol → misc. Shared — you both see the same list live.</p>
+  </div>
 </main>
 
 <script>
@@ -327,13 +386,13 @@ const THEME_KEY = 'trailhead-theme';
 
 // Session type registry. Colors map to CSS vars.
 const SESSION_TYPES = {
-  strength: { label: 'STRENGTH', full: 'Full Body Strength', color: 'var(--strength)', kind: 'strength' },
-  plyo:     { label: 'PLYO+RUN', full: 'Plyo Day + Run/Walk', color: 'var(--plyo)', kind: 'plyo' },
-  swim:     { label: 'SWIM', full: 'Swim', color: 'var(--swim)', kind: 'simple' },
-  pz:       { label: 'PZ RIDE', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
-  tabata:   { label: 'TABATA', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
-  strength60:{ label: 'STR 60%', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
-  rest:     { label: '', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
+  strength: { label: 'STRENGTH', em: '🏋️', full: 'Full Body Strength', color: 'var(--strength)', kind: 'strength' },
+  plyo:     { label: 'PLYO+RUN', em: '💥', full: 'Plyo Day + Run/Walk', color: 'var(--plyo)', kind: 'plyo' },
+  swim:     { label: 'SWIM', em: '🏊', full: 'Swim', color: 'var(--swim)', kind: 'simple' },
+  pz:       { label: 'PZ RIDE', em: '🚴', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
+  tabata:   { label: 'TABATA', em: '🔥', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
+  strength60:{ label: 'STR 60%', em: '🪶', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
+  rest:     { label: '', em: '😴', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
 };
 
 // The Baseline Fitness Program, seeded from the PT program docs (Aug 2026).
@@ -416,6 +475,8 @@ function loadLocal() {
   log.forEach(l => { if (l && l.id != null) l.id = String(l.id); });
   try { hikeState = JSON.parse(localStorage.getItem('trailhead-hikes-v1') || '{}') || {}; } catch { hikeState = {}; }
   try { eatState = JSON.parse(localStorage.getItem('trailhead-eats-v1') || '{}') || {}; } catch { eatState = {}; }
+  try { grocery = JSON.parse(localStorage.getItem('trailhead-grocery-v1') || '[]'); if (!Array.isArray(grocery)) grocery = []; } catch { grocery = []; }
+  try { staples = JSON.parse(localStorage.getItem('trailhead-staples-v1') || 'null'); } catch { staples = null; }
 }
 function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} cloudPush('plan'); }
 function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
@@ -452,7 +513,7 @@ let theme = localStorage.getItem(THEME_KEY);
 if (!theme) theme = matchMedia('(max-width: 820px)').matches ? 'light' : 'dark';
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', theme);
-  const b = document.getElementById('theme-btn'); if (b) b.textContent = theme === 'dark' ? '🌙' : '☀️';
+  const b = document.getElementById('theme-btn'); if (b) b.textContent = theme === 'dark' ? '🌙 Dark' : '☀️ Light';
 }
 function toggleTheme() { theme = theme === 'dark' ? 'light' : 'dark'; localStorage.setItem(THEME_KEY, theme); applyTheme(); }
 
@@ -460,7 +521,26 @@ function toggleTheme() { theme = theme === 'dark' ? 'light' : 'dark'; localStora
 function switchTab(t) {
   document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.body.classList.remove('nav-hidden');   // nav always returns on tab change
+  scrollTo(0, 0);
 }
+
+// ═════════════════════════════ HEADER MENU + NAV AUTO-HIDE ═════════════════
+function toggleHeaderMenu(e) {
+  e.stopPropagation();
+  document.getElementById('header-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.header-menu-wrap')) document.getElementById('header-menu')?.classList.remove('open');
+});
+// Hide chrome scrolling down, bring it back scrolling up (phone-first behavior).
+let _lastY = 0;
+window.addEventListener('scroll', () => {
+  const y = scrollY;
+  if (y > _lastY + 8 && y > 90) document.body.classList.add('nav-hidden');
+  else if (y < _lastY - 8 || y < 90) document.body.classList.remove('nav-hidden');
+  _lastY = y;
+}, { passive: true });
 
 // ═════════════════════════════ CALENDAR ════════════════════════════════════
 // Weekday labels come from the actual date, so the plan can start on ANY day —
@@ -486,9 +566,10 @@ function renderCalendar() {
         const iso = isoOf(dayDate(wi, di));
         const done = log.some(l => l.date === iso && l.done);
         const swapSel = pendingSwap && pendingSwap.wi === wi && pendingSwap.di === di;
-        return `<div class="day${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" onclick="dayTap(${wi},${di})">
+        return `<div class="day sess-${d.t}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
           <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}</div>
-          <div class="sess" style="--sess-color:${st.color}">${st.label || '·'}${d.min ? `<div class="dur">${d.min} min</div>` : ''}</div>
+          <div class="sess-em">${st.em}</div>
+          <div class="sess">${st.label || ''}${d.min ? `<div class="dur">${d.min} min</div>` : ''}</div>
         </div>`;
       }).join('')}</div>
     </div>`;
@@ -960,7 +1041,8 @@ let hikeFilter = 'all';
 function renderHikes() {
   const chips = [['all','All'],['todo','To-do'],['done','Done ✓'],['water','💧 Water'],['close','≤30 min'],['big','Big days']];
   document.getElementById('hike-filters').innerHTML = chips.map(([k,l]) =>
-    `<button class="chip${hikeFilter===k?' on':''}" onclick="hikeFilter='${k}';renderHikes()">${l}</button>`).join('');
+    `<button class="chip${hikeFilter===k?' on':''}" onclick="hikeFilter='${k}';renderHikes()">${l}</button>`).join('')
+    + `<button class="chip dice" onclick="surpriseHike()">🎲 Pick for us</button>`;
   let list = HIKES_DB;
   if (hikeFilter==='todo') list = list.filter(h => !hikeState[h.id]?.done);
   if (hikeFilter==='done') list = list.filter(h => hikeState[h.id]?.done);
@@ -990,11 +1072,25 @@ function renderHikes() {
           ${/lake/.test(h.water)?'<span class="badge water">Lake</span>':''}
           ${h.dogs==='n'?'<span class="badge">No dogs</span>':''}
           <span class="badge">${escapeHtml(h.park)}</span>
+          <a class="badge maplink" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.name + ' trailhead ' + h.park + ' TN')}">🧭 Directions</a>
           <button class="done-btn${done?' on':''}" onclick="toggleHike('${h.id}')">✓${done?' Done':''}</button>
         </div>
       </div>`;
     }).join('');
   }).join('');
+}
+// 🎲 pick a random not-yet-done hike and spotlight it.
+function surpriseHike() {
+  const todo = HIKES_DB.filter(h => !hikeState[h.id]?.done);
+  if (!todo.length) { showToast('You\'ve done them all. Go be proud.'); return; }
+  const pick = todo[Math.floor(Math.random() * todo.length)];
+  showToast(`🎲 ${pick.name} — ${pick.mi} mi, ${pick.drive} min away`);
+  hikeFilter = 'all'; renderHikes();
+  setTimeout(() => {
+    const link = [...document.querySelectorAll('#hike-list .ttl a')].find(a => a.textContent === pick.name);
+    const card = link?.closest('.card');
+    if (card) { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); card.style.boxShadow = '0 0 0 3px var(--accent)'; setTimeout(() => card.style.boxShadow = '', 2600); }
+  }, 60);
 }
 function toggleHike(id) {
   if (hikeState[id]?.done) delete hikeState[id]; else hikeState[id] = { done: true, date: todayIso() };
@@ -1169,7 +1265,8 @@ let eatSearch = '';
 function renderEats() {
   const chips = [['all','All'],['tried','Tried ♥'],['totry','To try'],['nations','Our side of town'],['new','New finds'],['fancy','Special occasion'],['cheap','Cheap + great'],['closed','RIP']];
   document.getElementById('eat-filters').innerHTML = chips.map(([k,l]) =>
-    `<button class="chip${eatFilter===k?' on':''}" onclick="eatFilter='${k}';renderEats()">${l}</button>`).join('');
+    `<button class="chip${eatFilter===k?' on':''}" onclick="eatFilter='${k}';renderEats()">${l}</button>`).join('')
+    + `<button class="chip dice" onclick="surpriseEat()">🎲 Where to eat?</button>`;
   const q = eatSearch.trim().toLowerCase();
   const WEST = /nations|sylvan|charlotte|centennial|belle meade|west end/i;
   let list = EATS_DB.filter(e => eatFilter==='closed' ? e.status==='c' : e.status==='o');
@@ -1200,10 +1297,21 @@ function renderEats() {
           ${e.flag==='j'?'<span class="badge star">James Beard</span>':''}
           ${e.src==='n'?'<span class="badge new">New find</span>':''}
           ${e.src==='l'?'<span class="badge">Lucia</span>':''}
+          ${e.status==='o'?`<a class="badge maplink" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.name + ' ' + e.hood + ' Nashville TN')}">📍 Map</a>`:''}
           ${e.status==='o'?`<button class="heart-btn${st.tried?' on':''}" onclick="toggleEat('${e.id}')">${st.tried?'♥'+'★'.repeat(st.stars||0):'♡ Tried?'}</button>`:''}
         </div>
       </div>`;
     }).join('')).join('');
+}
+// 🎲 settle the "where should we eat" debate — untried spots only.
+function surpriseEat() {
+  const todo = EATS_DB.filter(e => e.status === 'o' && !eatState[e.id]?.tried);
+  if (!todo.length) { showToast('You\'ve eaten everywhere. Impressive.'); return; }
+  const pick = todo[Math.floor(Math.random() * todo.length)];
+  showToast(`🎲 ${pick.name} — ${pick.cuisine}, ${pick.hood}`);
+  eatFilter = 'all'; eatSearch = pick.name;
+  const s = document.getElementById('eat-search'); if (s) s.value = pick.name;
+  renderEats();
 }
 // Tap cycles: untried → tried → tried★ → ★★ → ★★★ → untried.
 function toggleEat(id) {
@@ -1213,6 +1321,101 @@ function toggleEat(id) {
   else delete eatState[id];
   try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(eatState)); } catch {}
   cloudPush('eats'); renderEats();
+}
+
+// ═════════════════════════════ GROCERY ═════════════════════════════════════
+// The TJ's list. Categories in THE order they walk the store; the list always
+// renders in walking order (AnyList's aisle-sort idea, hardcoded to their TJ's).
+// Checked items sink to the bottom of their category; "Clear checked" sweeps up.
+const G_CATS = ['Spices', 'Veggies', 'Fruit', 'Meat', 'Dairy', 'Chips/Nuts', 'Alcohol', 'Misc'];
+const G_EMOJI = { 'Spices':'🧂','Veggies':'🥦','Fruit':'🍌','Meat':'🥩','Dairy':'🥛','Chips/Nuts':'🥜','Alcohol':'🍷','Misc':'🧺' };
+// Known items auto-file into the right category on add (grows via staples edits).
+const G_KNOWN = { banana:'Fruit', bananas:'Fruit', 'greek yogurt':'Dairy', yogurt:'Dairy', eggs:'Dairy', bacon:'Meat',
+  milk:'Dairy', butter:'Dairy', cheese:'Dairy', chicken:'Meat', beef:'Meat', salmon:'Meat', avocado:'Veggies',
+  spinach:'Veggies', onion:'Veggies', onions:'Veggies', garlic:'Veggies', peppers:'Veggies', broccoli:'Veggies',
+  apples:'Fruit', berries:'Fruit', blueberries:'Fruit', lemon:'Fruit', limes:'Fruit', wine:'Alcohol', beer:'Alcohol',
+  almonds:'Chips/Nuts', cashews:'Chips/Nuts', chips:'Chips/Nuts', salt:'Spices', pepper:'Spices', cinnamon:'Spices' };
+const DEFAULT_STAPLES = [
+  { name: 'Bananas', cat: 'Fruit' }, { name: 'Greek yogurt', cat: 'Dairy' },
+  { name: 'Eggs', cat: 'Dairy' }, { name: 'Bacon', cat: 'Meat' },
+];
+
+let grocery = [];            // [{id,name,cat,got}] — SHARED
+let staples = null;          // [{name,cat}] — SHARED, editable rarely
+let gCat = 'Misc';           // category picked for the next add
+
+function gStaples() { return Array.isArray(staples) && staples.length ? staples : DEFAULT_STAPLES; }
+function saveGrocery() {
+  try { localStorage.setItem('trailhead-grocery-v1', JSON.stringify(grocery)); } catch {}
+  cloudPush('grocery');
+}
+function saveStaples() {
+  try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(staples)); } catch {}
+  cloudPush('staples');
+}
+function guessCat(name) {
+  const n = name.toLowerCase();
+  if (G_KNOWN[n]) return G_KNOWN[n];
+  for (const [k, c] of Object.entries(G_KNOWN)) if (n.includes(k)) return c;
+  return gCat;
+}
+function addGrocery() {
+  const inp = document.getElementById('g-input');
+  const name = (inp.value || '').trim();
+  if (!name) return;
+  if (grocery.some(g => !g.got && g.name.toLowerCase() === name.toLowerCase())) { showToast('Already on the list'); inp.value=''; return; }
+  grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, cat: guessCat(name), got: false });
+  inp.value = '';
+  saveGrocery(); renderGrocery();
+  inp.focus();
+}
+function addStaples() {
+  let added = 0;
+  for (const s of gStaples()) {
+    if (grocery.some(g => !g.got && g.name.toLowerCase() === s.name.toLowerCase())) continue;
+    grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6) + added, name: s.name, cat: s.cat, got: false });
+    added++;
+  }
+  saveGrocery(); renderGrocery();
+  showToast(added ? `⭐ ${added} staple${added>1?'s':''} added` : 'Staples already on the list');
+}
+function editStaples() {
+  const cur = gStaples().map(s => s.name).join(', ');
+  const v = prompt('Staples (comma-separated). These get added every time you hit ⭐:', cur);
+  if (v == null) return;
+  staples = v.split(',').map(s => s.trim()).filter(Boolean).map(name => ({ name, cat: guessCat(name) }));
+  saveStaples();
+  showToast('Staples updated');
+}
+function toggleGrocery(id) {
+  const g = grocery.find(g => g.id === id); if (!g) return;
+  g.got = !g.got;
+  saveGrocery(); renderGrocery();
+}
+function removeGrocery(id) { grocery = grocery.filter(g => g.id !== id); saveGrocery(); renderGrocery(); }
+function clearGotten() {
+  const n = grocery.filter(g => g.got).length;
+  if (!n) return;
+  grocery = grocery.filter(g => !g.got);
+  saveGrocery(); renderGrocery();
+  showToast(`${n} item${n>1?'s':''} cleared 🛒`);
+}
+function renderGrocery() {
+  document.getElementById('g-cats').innerHTML = G_CATS.map(c =>
+    `<button class="chip${gCat===c?' on':''}" onclick="gCat='${c}';renderGrocery()">${G_EMOJI[c]} ${c}</button>`).join('');
+  const open = grocery.filter(g => !g.got).length;
+  document.getElementById('g-count').textContent = open ? `${open} to grab` : 'List clear 🎉';
+  document.getElementById('g-list').innerHTML = G_CATS.map(cat => {
+    const items = grocery.filter(g => g.cat === cat);
+    if (!items.length) return '';
+    items.sort((a, b) => (a.got?1:0) - (b.got?1:0));   // checked sink within category
+    return `<div class="group-title">${G_EMOJI[cat]} ${cat}</div>` + items.map(g => `
+      <div class="g-item${g.got?' got':''}" onclick="toggleGrocery('${g.id}')">
+        <span class="g-chk">✓</span>
+        <span class="g-nm">${escapeHtml(g.name)}</span>
+        <button class="g-x" onclick="event.stopPropagation();removeGrocery('${g.id}')">✕</button>
+      </div>`).join('');
+  }).join('');
 }
 
 // ═════════════════════════════ CLOUD SYNC (Supabase, household) ═════════════
@@ -1239,6 +1442,12 @@ const CLOUD_COLLECTIONS = {
   eats: { owner: 'shared', kind: 'map',
     get: () => eatState,
     set: v => { if (v && typeof v === 'object') { eatState = v; try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(v)); } catch {} renderEats(); } } },
+  grocery: { owner: 'shared', kind: 'array', key: 'id',
+    get: () => grocery,
+    set: v => { if (Array.isArray(v)) { grocery = v; try { localStorage.setItem('trailhead-grocery-v1', JSON.stringify(v)); } catch {} renderGrocery(); } } },
+  staples: { owner: 'shared', kind: 'object',
+    get: () => staples,
+    set: v => { if (Array.isArray(v)) { staples = v; try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(v)); } catch {} } } },
 };
 function ownerKey(coll) { return CLOUD_COLLECTIONS[coll].owner === 'me' ? cloudUser.id : 'shared'; }
 // 'map' collections (hikes/eats checkmarks) union by key, cloud wins collisions.
@@ -1349,6 +1558,7 @@ loadLocal();
 renderCalendar();
 renderHikes();
 renderEats();
+renderGrocery();
 switchTab('home');
 cloudInit();
 </script>

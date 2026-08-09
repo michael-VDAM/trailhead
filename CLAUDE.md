@@ -31,6 +31,11 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - User overlay state is **shared** (household): `hikes` (done map) and `eats` (tried + 0-3 stars map) collections, kind 'map' = union merge in pullAll.
 - Source sheets: `M & F 4eva/Activities!/Local Hikes.gsheet` + `Places to Eat - Nashville.gsheet` (gsheets are cloud pointers — ask Michael to download xlsx to read).
 
+## Grocery module (added 2026-08-09)
+- Shared list in **their Trader Joe's walking order**: Spices → Veggies → Fruit → Meat → Dairy → Chips/Nuts → Alcohol → Misc (`G_CATS` — never reorder without asking).
+- ⭐ **Add staples** one-taps the staple set (default: Bananas, Greek yogurt, Eggs, Bacon; editable via ✎, synced as `staples` collection). `G_KNOWN` auto-files common items into categories.
+- Checked items strike through and sink within their category; "Clear checked" sweeps. Collections `grocery` (array) + `staples` (object), both shared.
+
 ## Timers
 - Repeat beeper: one interval, beeps (Web Audio double-beep) every cycle until stopped.
 - A/B: two intervals alternating with a beep at each switch. Both request a screen wake lock.
