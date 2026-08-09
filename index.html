@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Trailhead · Ross House</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Trailhead">
+  <meta name="theme-color" content="#171e33">
+  <!-- Cloud sync (optional): Supabase JS client. App works fully without it. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ═══════════════════════ BASE ═══════════════════════ */
+    /* Alpine sunrise palette — lively on purpose. Dark = night-sky navy with
+       vivid trail-blaze accents; light = bright snowfield with the same punch. */
+    :root {
+      --bg: #171e33; --panel: #1f2947; --panel2: #273356; --panel3: #303e66;
+      --border: #3d4d7a; --text: #f2f4ff; --muted: #a9b4d8; --muted2: #7d89b3;
+      --accent: #ff8c42; --accent-soft: rgba(255,140,66,0.18);
+      --success: #3ddc84; --danger: #ff5d5d;
+      --strength: #ff5d5d; --plyo: #c77dff; --swim: #4cc9f0; --ride: #3ddc84; --tabata: #ffd166; --rest: #7d89b3;
+    }
+    [data-theme="light"] {
+      --bg: #fdf7ec; --panel: #ffffff; --panel2: #f6efdf; --panel3: #efe6d1;
+      --border: #e0d5bd; --text: #23283d; --muted: #5a617d; --muted2: #8b91a8;
+      --accent: #d64b00; --accent-soft: rgba(214,75,0,0.12);
+      --success: #0d8a4f; --danger: #cf2f4a;
+      --strength: #cf2f4a; --plyo: #7b2fd4; --swim: #0077b6; --ride: #0d8a4f; --tabata: #b07d00; --rest: #8b91a8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { touch-action: manipulation; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+    button { font-family: inherit; }
+
+    /* ═══════════════════════ HEADER ═══════════════════════ */
+    header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; z-index: 100; }
+    .brand { display: flex; align-items: center; gap: 9px; cursor: pointer; }
+    .brand svg { width: 32px; height: 32px; flex-shrink: 0; }
+    .brand h1 { font-size: 17px; letter-spacing: 0.3px; }
+    .brand .sub { font-size: 10px; color: var(--muted); display: block; margin-top: -2px; }
+    .header-spacer { flex: 1; }
+    .header-action { background: var(--panel3); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 7px 11px; border-radius: 8px; cursor: pointer; }
+    .header-action:hover { border-color: var(--accent); }
+    nav.tabs { display: flex; gap: 6px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; position: sticky; top: calc(53px + env(safe-area-inset-top)); z-index: 99; }
+    .tab-btn { background: none; border: 1px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+    .tab-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+    main { max-width: 860px; margin: 0 auto; padding: 16px 14px 40px; }
+    .tabpane { display: none; }
+    .tabpane.active { display: block; }
+    h2 { font-size: 16px; margin-bottom: 10px; }
+    .hint { color: var(--muted2); font-size: 11.5px; }
+
+    /* ═══════════════════════ HOME TILES ═══════════════════════ */
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+    .tile { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 14px; cursor: pointer; text-align: left; color: var(--text); transition: border-color 0.12s; }
+    .tile:hover { border-color: var(--accent); }
+    .tile .em { font-size: 26px; }
+    .tile h3 { font-size: 14px; margin-top: 8px; }
+    .tile p { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .tile.soon { opacity: 0.55; cursor: default; }
+    .tile.soon:hover { border-color: var(--border); }
+    .tile .soon-pill { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); background: var(--panel3); border-radius: 4px; padding: 2px 6px; margin-top: 6px; }
+
+    /* ═══════════════════════ CALENDAR ═══════════════════════ */
+    .cal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .cal-head .grow { flex: 1; }
+    .btn { background: var(--panel3); border: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 600; padding: 8px 13px; border-radius: 8px; cursor: pointer; }
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #171e33; font-weight: 700; }
+    [data-theme="light"] .btn.primary { color: #fff; }
+    .btn.editing { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .week { margin-bottom: 14px; }
+    .week-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; align-items: baseline; }
+    .week-label .range { font-weight: 400; color: var(--muted2); text-transform: none; letter-spacing: 0; }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .day { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 6px 5px; min-height: 66px; cursor: pointer; position: relative; }
+    .day .dnum { font-size: 9.5px; color: var(--muted2); font-weight: 600; }
+    .day .sess { margin-top: 4px; font-size: 10px; font-weight: 700; line-height: 1.25; color: var(--sess-color, var(--muted)); }
+    .day .dur { font-size: 9px; color: var(--muted); font-weight: 400; }
+    .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .day.done::after { content: '✓'; position: absolute; top: 4px; right: 6px; color: var(--success); font-size: 11px; font-weight: 700; }
+    .day.editable { border-style: dashed; }
+    .day.editable:hover { border-color: var(--accent); }
+    @media (max-width: 640px) {
+      .days { gap: 3px; }
+      .day { min-height: 58px; padding: 4px 3px; border-radius: 7px; }
+      .day .sess { font-size: 8.5px; }
+      main { padding: 12px 8px 40px; }
+    }
+
+    /* ═══════════════════════ SESSION SHEET ═══════════════════════ */
+    .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 300; display: flex; align-items: flex-end; justify-content: center; }
+    @media (min-width: 700px) { .sheet-overlay { align-items: center; } }
+    .sheet { background: var(--panel); border: 1px solid var(--border); border-radius: 16px 16px 0 0; width: 100%; max-width: 640px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+    @media (min-width: 700px) { .sheet { border-radius: 16px; } }
+    .sheet-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .sheet-head .ttl { font-weight: 700; font-size: 15px; flex: 1; }
+    .sheet-head .x { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; }
+    .sheet-body { overflow-y: auto; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); }
+    .sess-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sess-pick button { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 13px 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+    .sess-pick button:hover { border-color: var(--accent); }
+
+    /* exercise logging */
+    .ex { background: var(--panel2); border: 1px solid var(--border); border-radius: 11px; margin-bottom: 9px; overflow: hidden; }
+    .ex-head { display: flex; align-items: center; gap: 10px; padding: 11px 13px; cursor: pointer; }
+    .ex-head .nm { font-weight: 700; font-size: 13.5px; flex: 1; }
+    .ex-head .last { font-size: 10.5px; color: var(--muted); }
+    .ex-head .chk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; color: transparent; flex-shrink: 0; }
+    .ex.done .chk { background: var(--success); border-color: var(--success); color: #fff; }
+    .ex-sets { border-top: 1px solid var(--border); padding: 8px 13px 11px; }
+    .set-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+    .set-row .sn { font-size: 11px; color: var(--muted2); width: 34px; }
+    .set-val { background: var(--panel3); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 13px; font-weight: 700; cursor: pointer; min-width: 64px; text-align: center; color: var(--text); }
+    .set-val .u { font-size: 9.5px; color: var(--muted); font-weight: 400; }
+    .set-chk { margin-left: auto; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--border); background: none; color: transparent; font-size: 13px; cursor: pointer; }
+    .set-chk.on { background: var(--success); border-color: var(--success); color: #fff; }
+    .simple-done { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+    .note-in { width: 100%; background: var(--panel3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 11px; font-size: 13px; font-family: inherit; min-height: 60px; }
+
+    /* ═══════════════════════ DRUM PICKER ═══════════════════════ */
+    .drum-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 400; display: flex; align-items: flex-end; justify-content: center; }
+    .drum { background: var(--panel); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; width: 100%; max-width: 480px; padding-bottom: env(safe-area-inset-bottom); }
+    .drum-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; }
+    .drum-head .t { font-weight: 700; font-size: 14px; }
+    .drum-wheel { height: 180px; overflow-y: scroll; scroll-snap-type: y mandatory; position: relative; -webkit-overflow-scrolling: touch; }
+    .drum-wheel::-webkit-scrollbar { display: none; }
+    .drum-pad { height: 72px; }
+    .drum-opt { height: 36px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; font-size: 17px; font-weight: 600; color: var(--muted); }
+    .drum-band { position: absolute; left: 18px; right: 18px; top: 50%; transform: translateY(-50%); height: 36px; border-top: 1px solid var(--accent); border-bottom: 1px solid var(--accent); pointer-events: none; }
+    .drum-wrap { position: relative; }
+    .drum-actions { display: flex; gap: 10px; padding: 12px 18px 16px; }
+    .drum-actions .btn { flex: 1; padding: 12px; font-size: 14px; }
+
+    /* ═══════════════════════ TIMERS ═══════════════════════ */
+    .timer-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 16px; margin-bottom: 14px; }
+    .timer-card h3 { font-size: 14px; margin-bottom: 4px; }
+    .timer-card .hint { margin-bottom: 12px; display: block; }
+    .timer-set { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .timer-chip { background: var(--panel3); border: 1px solid var(--border); border-radius: 9px; padding: 9px 14px; font-size: 15px; font-weight: 700; cursor: pointer; color: var(--text); }
+    .timer-chip .u { font-size: 10px; color: var(--muted); font-weight: 400; }
+    .timer-display { font-size: 64px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: 2px; padding: 8px 0 4px; }
+    .timer-phase { text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); min-height: 16px; margin-bottom: 10px; }
+    .timer-card.phase-a .timer-display { color: var(--accent); }
+    .timer-card.phase-b .timer-display { color: var(--swim); }
+    .timer-card.running-simple .timer-display { color: var(--success); }
+    .timer-go { display: flex; gap: 10px; }
+    .timer-go .btn { flex: 1; padding: 13px; font-size: 15px; }
+    .cycles { text-align: center; font-size: 11px; color: var(--muted2); margin-top: 8px; }
+
+    /* toast */
+    .toast { position: fixed; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--panel3); border: 1px solid var(--accent); color: var(--text); border-radius: 10px; padding: 10px 18px; font-size: 13px; z-index: 500; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand" onclick="switchTab('home')">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="46" cy="16" r="7" fill="var(--accent)"/>
+      <path d="M4 52 L24 20 L38 44 L46 32 L60 52 Z" fill="none" stroke="var(--text)" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M14 52 Q22 46 30 50 T46 48" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="4 4" stroke-linecap="round"/>
+    </svg>
+    <div><h1>Trailhead</h1><span class="sub">Ross House</span></div>
+  </div>
+  <div class="header-spacer"></div>
+  <button class="header-action" onclick="cloudAccountClick()" id="cloud-btn" style="display:none">☁ Sign in</button>
+  <button class="header-action" onclick="toggleTheme()" id="theme-btn">🌙</button>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn" data-tab="home" onclick="switchTab('home')">Home</button>
+  <button class="tab-btn" data-tab="workout" onclick="switchTab('workout')">Workout</button>
+  <button class="tab-btn" data-tab="timers" onclick="switchTab('timers')">Timers</button>
+</nav>
+
+<main>
+  <!-- ═══════════ HOME ═══════════ -->
+  <div class="tabpane" id="pane-home">
+    <h2>Base camp</h2>
+    <p class="hint">Everything for the house, one trail marker at a time.</p>
+    <div class="tiles">
+      <button class="tile" onclick="switchTab('workout')">
+        <span class="em">🏋️</span><h3>Workout</h3>
+        <p>Your training calendar, gym logging, and interval timers.</p>
+      </button>
+      <button class="tile" onclick="switchTab('timers')">
+        <span class="em">⏱</span><h3>Timers</h3>
+        <p>Repeating beeper and A/B interval timer for the gym floor.</p>
+      </button>
+      <div class="tile soon"><span class="em">🛒</span><h3>Grocery</h3><p>Shared list for the two of you.</p><span class="soon-pill">Coming soon</span></div>
+      <div class="tile soon"><span class="em">🏠</span><h3>House</h3><p>Maintenance log &amp; reminders.</p><span class="soon-pill">Coming soon</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ WORKOUT (calendar) ═══════════ -->
+  <div class="tabpane" id="pane-workout">
+    <div class="cal-head">
+      <h2 style="margin:0">Training plan</h2>
+      <span class="hint" id="cal-sub"></span>
+      <div class="grow"></div>
+      <button class="btn" id="edit-btn" onclick="toggleEdit()">✎ Edit</button>
+    </div>
+    <div id="calendar"></div>
+    <p class="hint" style="margin-top:6px">Tap a day to open the workout. In edit mode, tap a day to change what's scheduled — the program is yours to bend.</p>
+  </div>
+
+  <!-- ═══════════ TIMERS ═══════════ -->
+  <div class="tabpane" id="pane-timers">
+    <h2>Timers</h2>
+
+    <div class="timer-card" id="t1card">
+      <h3>Repeat beeper</h3>
+      <span class="hint">Beeps every interval until you stop it. Set it and lift.</span>
+      <div class="timer-set">
+        <button class="timer-chip" onclick="pickTimerVal('t1')"><span id="t1-int">30</span><span class="u"> sec</span></button>
+      </div>
+      <div class="timer-display" id="t1-disp">0:30</div>
+      <div class="cycles" id="t1-cycles"></div>
+      <div class="timer-go">
+        <button class="btn primary" id="t1-go" onclick="toggleT1()">Start</button>
+      </div>
+    </div>
+
+    <div class="timer-card" id="t2card">
+      <h3>A / B intervals</h3>
+      <span class="hint">Alternates two intervals — 20s work, 45s rest, back to 20 — beeping at every switch.</span>
+      <div class="timer-set">
+        <button class="timer-chip" onclick="pickTimerVal('t2a')">A: <span id="t2-a">20</span><span class="u"> sec</span></button>
+        <button class="timer-chip" onclick="pickTimerVal('t2b')">B: <span id="t2-b">45</span><span class="u"> sec</span></button>
+      </div>
+      <div class="timer-phase" id="t2-phase"></div>
+      <div class="timer-display" id="t2-disp">0:20</div>
+      <div class="cycles" id="t2-cycles"></div>
+      <div class="timer-go">
+        <button class="btn primary" id="t2-go" onclick="toggleT2()">Start</button>
+      </div>
+    </div>
+    <p class="hint">Sound plays through your phone speaker — first Start may need the ring switch on. The screen stays awake while a timer runs.</p>
+  </div>
+</main>
+
+<script>
+// ═════════════════════════════ CONSTANTS / STATE ═══════════════════════════
+const PLAN_KEY = 'trailhead-plan-v1';
+const LOG_KEY  = 'trailhead-log-v1';
+const THEME_KEY = 'trailhead-theme';
+
+// Session type registry. Colors map to CSS vars.
+const SESSION_TYPES = {
+  strength: { label: 'STRENGTH', full: 'Full Body Strength', color: 'var(--strength)', kind: 'strength' },
+  plyo:     { label: 'PLYO+RUN', full: 'Plyo Day + Run/Walk', color: 'var(--plyo)', kind: 'plyo' },
+  swim:     { label: 'SWIM', full: 'Swim', color: 'var(--swim)', kind: 'simple' },
+  pz:       { label: 'PZ RIDE', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
+  tabata:   { label: 'TABATA', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
+  strength60:{ label: 'STR 60%', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
+  rest:     { label: '', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
+};
+
+// The Baseline Fitness Program, seeded from the PT program docs (Aug 2026).
+// 2-week cycle × 3 = 6-week build, then a deload week. Mon..Sun.
+function seedPlan() {
+  const d = (t, min) => min ? { t, min } : { t };
+  const w12 = [d('strength'), d('rest'), d('swim', 30), d('plyo'), d('rest'), d('pz', 30), d('rest')];
+  const w34 = [d('strength'), d('tabata', 20), d('swim', 30), d('plyo'), d('rest'), d('pz', 45), d('rest')];
+  const w56 = [d('strength'), d('tabata', 25), d('swim', 40), d('plyo'), d('pz', 30), d('pz', 60), d('rest')];
+  const deload = [d('strength60'), d('rest'), d('swim', 30), d('rest'), d('pz', 30), d('rest'), d('rest')];
+  // Start on the Monday of the current week.
+  const now = new Date();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const iso = mon.toISOString().slice(0, 10);
+  return {
+    startDate: iso,
+    weeks: [
+      { label: 'Week 1 · build', days: w12 },
+      { label: 'Week 2 · build', days: w12 },
+      { label: 'Week 3 · build', days: w34 },
+      { label: 'Week 4 · build', days: w34 },
+      { label: 'Week 5 · build', days: w56 },
+      { label: 'Week 6 · build', days: w56 },
+      { label: 'Week 7 · DELOAD', days: deload },
+    ],
+  };
+}
+
+// Strength template — exercise, sets×reps, seed weight (from the Aug '26 sheet).
+// Weight 0 = bodyweight / not tracked yet.
+const STRENGTH_TEMPLATE = [
+  { name: 'Hamstring Curls', sets: 4, reps: 6,  w: 65 },
+  { name: 'Push Ups',        sets: 3, reps: 10, w: 0 },
+  { name: 'Hip Thrusters',   sets: 3, reps: 10, w: 75 },
+  { name: 'Shoulder Press',  sets: 3, reps: 10, w: 100 },
+  { name: 'RDL',             sets: 3, reps: 10, w: 60 },
+  { name: 'Shrugs',          sets: 3, reps: 8,  w: 80 },
+  { name: 'Lat Pull',        sets: 3, reps: 10, w: 130 },
+  { name: 'Leg Ext',         sets: 3, reps: 10, w: 100 },
+  { name: 'Bench Press',     sets: 3, reps: 10, w: 0 },
+  { name: 'Leg Press',       sets: 3, reps: 10, w: 0 },
+  { name: 'Single-Leg Curl', sets: 3, reps: 10, w: 15 },
+];
+
+const PLYO_TEMPLATE = [
+  'Pogos 4 × 20s', 'Lateral Line Hops 4 × 20s', 'Depth Drop 2 × 10', 'Broad Jump 4 × 5',
+  'Box Jump 2 × 10', 'Single-Leg Lateral Hop 4 sets', 'Single-Leg Forward Hop 4 sets',
+  'Nordic 4 × 6', 'Back Extensions 3 × 13', 'Side Bends 3 × 12', 'Run/Walk intervals (per week block)',
+];
+
+let plan = null;       // { startDate, weeks: [{label, days:[{t,min?}]}] }
+let log = [];          // [{ id, date, type, done, exercises?, note?, min? }]
+let editMode = false;
+
+function loadLocal() {
+  try { plan = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); } catch { plan = null; }
+  if (!plan || !Array.isArray(plan.weeks)) plan = seedPlan();
+  try { log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); if (!Array.isArray(log)) log = []; } catch { log = []; }
+  log.forEach(l => { if (l && l.id != null) l.id = String(l.id); });
+}
+function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} cloudPush('plan'); }
+function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
+
+// ═════════════════════════════ HELPERS ═════════════════════════════════════
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function showToast(msg) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+function dayDate(w, d) { const dt = new Date(plan.startDate + 'T12:00:00'); dt.setDate(dt.getDate() + w * 7 + d); return dt; }
+function isoOf(dt) { return dt.toISOString().slice(0, 10); }
+function fmtClock(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+const todayIso = () => isoOf(new Date());
+
+// Most recent logged weight for an exercise (the whole point of the app).
+function lastWeights(exName) {
+  for (let i = log.length - 1; i >= 0; i--) {
+    const s = log[i];
+    if (!s.exercises) continue;
+    const ex = s.exercises.find(e => e.name === exName);
+    if (ex && ex.sets && ex.sets.length) {
+      const w = ex.sets.map(x => x.w).filter(x => x > 0);
+      const r = ex.sets.map(x => x.r).filter(x => x > 0);
+      if (w.length || r.length) return { w: w.length ? Math.max(...w) : 0, r: r.length ? r[r.length - 1] : 0, date: s.date };
+    }
+  }
+  return null;
+}
+
+// ═════════════════════════════ THEME ═══════════════════════════════════════
+let theme = localStorage.getItem(THEME_KEY);
+if (!theme) theme = matchMedia('(max-width: 820px)').matches ? 'light' : 'dark';
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', theme);
+  const b = document.getElementById('theme-btn'); if (b) b.textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+function toggleTheme() { theme = theme === 'dark' ? 'light' : 'dark'; localStorage.setItem(THEME_KEY, theme); applyTheme(); }
+
+// ═════════════════════════════ TABS ════════════════════════════════════════
+function switchTab(t) {
+  document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + t));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+}
+
+// ═════════════════════════════ CALENDAR ════════════════════════════════════
+const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function renderCalendar() {
+  const el = document.getElementById('calendar');
+  const tI = todayIso();
+  document.getElementById('cal-sub').textContent = '6-week build + deload · started ' + plan.startDate;
+  el.innerHTML = plan.weeks.map((wk, wi) => {
+    const start = dayDate(wi, 0), end = dayDate(wi, 6);
+    const range = (start.getMonth() + 1) + '/' + start.getDate() + ' – ' + (end.getMonth() + 1) + '/' + end.getDate();
+    return `<div class="week">
+      <div class="week-label">${escapeHtml(wk.label)} <span class="range">${range}</span></div>
+      <div class="days">${wk.days.map((d, di) => {
+        const st = SESSION_TYPES[d.t] || SESSION_TYPES.rest;
+        const iso = isoOf(dayDate(wi, di));
+        const done = log.some(l => l.date === iso && l.done);
+        return `<div class="day${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}" onclick="dayTap(${wi},${di})">
+          <div class="dnum">${DOW[di]} ${dayDate(wi, di).getDate()}</div>
+          <div class="sess" style="--sess-color:${st.color}">${st.label || '·'}${d.min ? `<div class="dur">${d.min} min</div>` : ''}</div>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function toggleEdit() {
+  editMode = !editMode;
+  const b = document.getElementById('edit-btn');
+  b.textContent = editMode ? '✓ Done editing' : '✎ Edit';
+  b.classList.toggle('editing', editMode);
+  renderCalendar();
+}
+function dayTap(wi, di) {
+  if (editMode) return openDayEditor(wi, di);
+  openSession(wi, di);
+}
+
+// Edit mode: pick what a day is.
+function openDayEditor(wi, di) {
+  const opts = [
+    ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
+    ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['strength60', 'Deload Strength'], ['rest', 'Rest'],
+  ];
+  openSheet(`${DOW[di]}, ${escapeHtml(plan.weeks[wi].label)}`, `
+    <div class="sess-pick">
+      ${opts.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}</button>`).join('')}
+    </div>
+    <p class="hint" style="margin-top:12px">Rides and swims will ask for minutes when you log them — the plan just holds the shape of the week.</p>`);
+}
+function setDay(wi, di, t) {
+  const keep = plan.weeks[wi].days[di].min;
+  plan.weeks[wi].days[di] = t === 'rest' ? { t } : { t, min: keep };
+  savePlan(); closeSheet(); renderCalendar();
+}
+
+// ═════════════════════════════ SESSION VIEW / LOGGING ══════════════════════
+let activeSession = null;   // working copy while the sheet is open
+
+function openSession(wi, di) {
+  const d = plan.weeks[wi].days[di];
+  const st = SESSION_TYPES[d.t] || SESSION_TYPES.rest;
+  const iso = isoOf(dayDate(wi, di));
+  if (st.kind === 'rest') { showToast('Rest day — dailies only. Enjoy it.'); return; }
+
+  const existing = log.find(l => l.date === iso);
+  if (st.kind === 'strength') {
+    activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
+      id: 's' + Date.now(), date: iso, type: d.t, done: false,
+      exercises: STRENGTH_TEMPLATE.map(t => {
+        const last = lastWeights(t.name);
+        return { name: t.name, done: false,
+          sets: Array.from({ length: t.sets }, () => ({ r: last?.r || t.reps, w: last ? last.w : t.w, done: false })) };
+      }),
+    };
+    renderStrengthSheet(st.full + (d.t === 'strength60' ? '' : ''));
+  } else if (st.kind === 'plyo') {
+    activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
+      id: 's' + Date.now(), date: iso, type: d.t, done: false,
+      exercises: PLYO_TEMPLATE.map(n => ({ name: n, done: false })),
+    };
+    renderPlyoSheet(st.full);
+  } else {
+    activeSession = existing ? JSON.parse(JSON.stringify(existing)) : { id: 's' + Date.now(), date: iso, type: d.t, done: false, min: d.min || 30, note: '' };
+    renderSimpleSheet(st.full);
+  }
+}
+
+function renderStrengthSheet(title) {
+  const s = activeSession;
+  openSheet(title + ' · ' + s.date, `
+    ${s.exercises.map((ex, xi) => {
+      const last = lastWeights(ex.name);
+      return `<div class="ex${ex.done ? ' done' : ''}" id="ex-${xi}">
+        <div class="ex-head" onclick="toggleExOpen(${xi})">
+          <span class="chk" onclick="event.stopPropagation();toggleExDone(${xi})">✓</span>
+          <span class="nm">${escapeHtml(ex.name)}</span>
+          <span class="last">${last ? 'last: ' + (last.w ? last.w + ' lb' : 'BW') : 'first time'}</span>
+        </div>
+        <div class="ex-sets" id="exsets-${xi}" style="display:none">
+          ${ex.sets.map((set, si) => `
+            <div class="set-row">
+              <span class="sn">Set ${si + 1}</span>
+              <button class="set-val" onclick="pickSetVal(${xi},${si},'w')">${set.w || 'BW'}<span class="u"> lb</span></button>
+              <button class="set-val" onclick="pickSetVal(${xi},${si},'r')">${set.r}<span class="u"> reps</span></button>
+              <button class="set-chk${set.done ? ' on' : ''}" onclick="toggleSet(${xi},${si})">✓</button>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="timer-go" style="margin-top:14px">
+      <button class="btn" onclick="closeSheet()">Close</button>
+      <button class="btn primary" onclick="finishSession()">Finish workout ✓</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Weights pre-fill from your last session. Weaker side sets the load on single-leg work; stop 2 reps shy of failure.</p>`);
+}
+function toggleExOpen(xi) {
+  const el = document.getElementById('exsets-' + xi);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+function toggleExDone(xi) {
+  const ex = activeSession.exercises[xi];
+  ex.done = !ex.done;
+  if (ex.sets) ex.sets.forEach(s => s.done = ex.done);
+  stashSession();
+  renderStrengthOrPlyo();
+}
+function toggleSet(xi, si) {
+  const ex = activeSession.exercises[xi];
+  ex.sets[si].done = !ex.sets[si].done;
+  ex.done = ex.sets.every(s => s.done);
+  stashSession();
+  renderStrengthOrPlyo(xi);
+}
+function renderStrengthOrPlyo(keepOpen) {
+  const openIds = [...document.querySelectorAll('.ex-sets')].filter(e => e.style.display !== 'none').map(e => +e.id.split('-')[1]);
+  if (activeSession.exercises[0]?.sets) renderStrengthSheet(SESSION_TYPES[activeSession.type].full + ' · ' + activeSession.date);
+  else renderPlyoSheet(SESSION_TYPES[activeSession.type].full);
+  [...new Set([...openIds, keepOpen])].forEach(i => { const el = document.getElementById('exsets-' + i); if (el) el.style.display = ''; });
+}
+
+function renderPlyoSheet(title) {
+  const s = activeSession;
+  openSheet(title + ' · ' + s.date, `
+    ${s.exercises.map((ex, xi) => `
+      <div class="ex${ex.done ? ' done' : ''}">
+        <div class="ex-head" onclick="toggleExDone(${xi})">
+          <span class="chk">✓</span><span class="nm">${escapeHtml(ex.name)}</span>
+        </div>
+      </div>`).join('')}
+    <div class="timer-go" style="margin-top:14px">
+      <button class="btn" onclick="closeSheet()">Close</button>
+      <button class="btn primary" onclick="finishSession()">Finish workout ✓</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Once a week, never more. Any hop asymmetry: note it for the PT, don't push through.</p>`);
+}
+
+function renderSimpleSheet(title) {
+  const s = activeSession;
+  openSheet(title + ' · ' + s.date, `
+    <div class="simple-done">
+      <button class="timer-chip" onclick="pickSessionMin()"><span id="sess-min">${s.min}</span><span class="u"> min</span></button>
+      <textarea class="note-in" id="sess-note" placeholder="Optional note — how did it feel?">${escapeHtml(s.note || '')}</textarea>
+      <div class="timer-go" style="width:100%">
+        <button class="btn" onclick="closeSheet()">Close</button>
+        <button class="btn primary" onclick="finishSession()">Mark done ✓</button>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:10px">Time-based, never distance. Conversational unless the calendar says tabata.</p>`);
+}
+function pickSessionMin() {
+  openDrum('Minutes', rangeVals(10, 120, 5), activeSession.min, v => {
+    activeSession.min = v; const el = document.getElementById('sess-min'); if (el) el.textContent = v; stashSession();
+  });
+}
+
+function stashSession() {
+  // Keep the working copy in the log as we go, so nothing is lost mid-workout.
+  const i = log.findIndex(l => l.date === activeSession.date);
+  if (i >= 0) log[i] = activeSession; else log.push(activeSession);
+  saveLog();
+}
+function finishSession() {
+  activeSession.done = true;
+  const note = document.getElementById('sess-note'); if (note) activeSession.note = note.value.trim();
+  stashSession();
+  closeSheet(); renderCalendar();
+  showToast('Logged. Nice work. 🏔');
+}
+function pickSetVal(xi, si, field) {
+  const set = activeSession.exercises[xi].sets[si];
+  if (field === 'w') openDrum('Weight (lb)', rangeVals(0, 400, 2.5), set.w, v => { set.w = v; stashSession(); renderStrengthOrPlyo(xi); });
+  else openDrum('Reps', rangeVals(1, 30, 1), set.r, v => { set.r = v; stashSession(); renderStrengthOrPlyo(xi); });
+}
+
+// ═════════════════════════════ SHEET + DRUM ════════════════════════════════
+function openSheet(title, bodyHtml) {
+  closeSheet();
+  const ov = document.createElement('div');
+  ov.className = 'sheet-overlay'; ov.id = 'sheet';
+  ov.onclick = e => { if (e.target === ov) closeSheet(); };
+  ov.innerHTML = `<div class="sheet">
+    <div class="sheet-head"><div class="ttl">${title}</div><button class="x" onclick="closeSheet()">×</button></div>
+    <div class="sheet-body">${bodyHtml}</div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function closeSheet() { document.getElementById('sheet')?.remove(); }
+
+function rangeVals(min, max, step) {
+  const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
+}
+function openDrum(title, values, current, onPick) {
+  document.getElementById('drum')?.remove();
+  const ov = document.createElement('div');
+  ov.className = 'drum-overlay'; ov.id = 'drum';
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = `<div class="drum">
+    <div class="drum-head"><span class="t">${title}</span></div>
+    <div class="drum-wrap">
+      <div class="drum-wheel" id="drum-wheel">
+        <div class="drum-pad"></div>
+        ${values.map(v => `<div class="drum-opt" data-v="${v}">${v}</div>`).join('')}
+        <div class="drum-pad"></div>
+      </div>
+      <div class="drum-band"></div>
+    </div>
+    <div class="drum-actions">
+      <button class="btn" onclick="document.getElementById('drum').remove()">Cancel</button>
+      <button class="btn primary" id="drum-ok">Set</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const wheel = document.getElementById('drum-wheel');
+  const idx = Math.max(0, values.findIndex(v => v >= current));
+  wheel.scrollTop = idx * 36;
+  document.getElementById('drum-ok').onclick = () => {
+    const i = Math.round(wheel.scrollTop / 36);
+    onPick(values[Math.min(values.length - 1, Math.max(0, i))]);
+    ov.remove();
+  };
+}
+
+// ═════════════════════════════ TIMERS ══════════════════════════════════════
+// Web Audio double-beep. Context is created on first user Start (autoplay rules).
+let audioCtx = null;
+function beepBeep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    [0, 0.18].forEach(off => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'square'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime + off);
+      g.gain.exponentialRampToValueAtTime(0.28, audioCtx.currentTime + off + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + off + 0.12);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + off); o.stop(audioCtx.currentTime + off + 0.14);
+    });
+  } catch {}
+}
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request('screen');
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+
+// Timer 1: repeating countdown.
+const t1 = { int: 30, running: false, endAt: 0, cycles: 0, tick: null };
+function toggleT1() {
+  if (t1.running) return stopT1();
+  t1.running = true; t1.cycles = 0; t1.endAt = Date.now() + t1.int * 1000;
+  beepBeep(); keepAwake(true);
+  document.getElementById('t1-go').textContent = 'Stop';
+  document.getElementById('t1card').classList.add('running-simple');
+  t1.tick = setInterval(() => {
+    const left = (t1.endAt - Date.now()) / 1000;
+    if (left <= 0) { t1.cycles++; t1.endAt += t1.int * 1000; beepBeep(); }
+    document.getElementById('t1-disp').textContent = fmtClock((t1.endAt - Date.now()) / 1000);
+    document.getElementById('t1-cycles').textContent = t1.cycles ? t1.cycles + ' interval' + (t1.cycles > 1 ? 's' : '') + ' done' : '';
+  }, 150);
+}
+function stopT1() {
+  t1.running = false; clearInterval(t1.tick);
+  document.getElementById('t1-go').textContent = 'Start';
+  document.getElementById('t1card').classList.remove('running-simple');
+  document.getElementById('t1-disp').textContent = fmtClock(t1.int);
+  if (!t2.running) keepAwake(false);
+}
+
+// Timer 2: alternating A/B intervals.
+const t2 = { a: 20, b: 45, running: false, phase: 'a', endAt: 0, rounds: 0, tick: null };
+function toggleT2() {
+  if (t2.running) return stopT2();
+  t2.running = true; t2.phase = 'a'; t2.rounds = 0; t2.endAt = Date.now() + t2.a * 1000;
+  beepBeep(); keepAwake(true);
+  document.getElementById('t2-go').textContent = 'Stop';
+  setT2Phase();
+  t2.tick = setInterval(() => {
+    const left = (t2.endAt - Date.now()) / 1000;
+    if (left <= 0) {
+      t2.phase = t2.phase === 'a' ? 'b' : 'a';
+      if (t2.phase === 'a') t2.rounds++;
+      t2.endAt += (t2.phase === 'a' ? t2.a : t2.b) * 1000;
+      beepBeep(); setT2Phase();
+    }
+    document.getElementById('t2-disp').textContent = fmtClock((t2.endAt - Date.now()) / 1000);
+    document.getElementById('t2-cycles').textContent = t2.rounds ? t2.rounds + ' round' + (t2.rounds > 1 ? 's' : '') + ' done' : '';
+  }, 150);
+}
+function setT2Phase() {
+  const card = document.getElementById('t2card');
+  card.classList.toggle('phase-a', t2.phase === 'a');
+  card.classList.toggle('phase-b', t2.phase === 'b');
+  document.getElementById('t2-phase').textContent = t2.phase === 'a' ? 'Interval A' : 'Interval B';
+}
+function stopT2() {
+  t2.running = false; clearInterval(t2.tick);
+  document.getElementById('t2-go').textContent = 'Start';
+  document.getElementById('t2card').classList.remove('phase-a', 'phase-b');
+  document.getElementById('t2-phase').textContent = '';
+  document.getElementById('t2-disp').textContent = fmtClock(t2.a);
+  if (!t1.running) keepAwake(false);
+}
+function pickTimerVal(which) {
+  const map = {
+    t1:  ['Interval (sec)', () => t1.int, v => { t1.int = v; document.getElementById('t1-int').textContent = v; if (!t1.running) document.getElementById('t1-disp').textContent = fmtClock(v); }],
+    t2a: ['Interval A (sec)', () => t2.a, v => { t2.a = v; document.getElementById('t2-a').textContent = v; if (!t2.running) document.getElementById('t2-disp').textContent = fmtClock(v); }],
+    t2b: ['Interval B (sec)', () => t2.b, v => { t2.b = v; document.getElementById('t2-b').textContent = v; }],
+  };
+  const [title, get, set] = map[which];
+  openDrum(title, rangeVals(5, 300, 5), get(), set);
+}
+
+// ═════════════════════════════ CLOUD SYNC (Supabase, household) ═════════════
+// Same generic-JSONB pattern as Bright Cuts, but rows are keyed
+// (household_id, owner_key, collection): owner_key 'shared' for household data,
+// the user's uuid for personal data (workout plan + log are personal).
+const SUPABASE_URL = 'https://brrtfvfilcaoktykrijt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJycnRmdmZpbGNhb2t0eWtyaWp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MTM3NzQsImV4cCI6MjA5NTQ4OTc3NH0.PbSkc8H6cML4s6FBbw3nPU72U_ZzAh5vWPAXtA9PbBQ';
+const CLOUD_ENABLED = typeof supabase !== 'undefined';
+let sb = null, cloudUser = null, household = null, cloudChannel = null, cloudPulling = false;
+const cloudDirty = {};
+
+const CLOUD_COLLECTIONS = {
+  plan: { owner: 'me', kind: 'object',
+    get: () => plan,
+    set: v => { if (v && v.weeks) { plan = v; try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} renderCalendar(); } } },
+  log: { owner: 'me', kind: 'array', key: 'id',
+    get: () => log,
+    set: v => { if (Array.isArray(v)) { log = v; try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} renderCalendar(); } } },
+};
+function ownerKey(coll) { return CLOUD_COLLECTIONS[coll].owner === 'me' ? cloudUser.id : 'shared'; }
+
+function cloudInit() {
+  const btn = document.getElementById('cloud-btn');
+  if (!CLOUD_ENABLED) return;
+  if (btn) btn.style.display = '';
+  try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }); }
+  catch (e) { console.error(e); if (btn) btn.style.display = 'none'; return; }
+  sb.auth.onAuthStateChange((_e, session) => { cloudUser = session?.user || null; onAuth(); });
+  sb.auth.getSession().then(({ data }) => { cloudUser = data.session?.user || null; onAuth(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudUser) pullAll(); });
+  window.addEventListener('online', () => { if (cloudUser) pullAll(); });
+}
+async function onAuth() {
+  updateCloudUI();
+  if (!cloudUser) { household = null; unsubscribeCloud(); return; }
+  // Find (or claim) household membership.
+  let { data } = await sb.from('trailhead_members').select('household_id').limit(1);
+  if (!data || !data.length) {
+    const { data: joined } = await sb.rpc('trailhead_join');
+    if (joined) data = [{ household_id: joined }];
+  }
+  if (!data || !data.length) { showToast('This email isn\'t on the household list yet.'); return; }
+  household = data[0].household_id;
+  subscribeCloud(); pullAll();
+}
+function updateCloudUI() {
+  const btn = document.getElementById('cloud-btn'); if (!btn) return;
+  const failing = Object.keys(cloudDirty);
+  if (cloudUser && failing.length) { btn.textContent = '⚠ sync issue'; btn.title = 'Not synced: ' + failing.join(', ') + ' — click to retry'; }
+  else if (cloudUser) { btn.textContent = '☁ ' + (cloudUser.email || '').split('@')[0]; btn.title = 'Synced — click to sign out'; }
+  else { btn.textContent = '☁ Sign in'; btn.title = 'Sign in to sync across your devices'; }
+}
+async function cloudAccountClick() {
+  if (!sb) return;
+  if (cloudUser) {
+    if (Object.keys(cloudDirty).length) {
+      await pullAll();
+      if (!Object.keys(cloudDirty).length) { showToast('All changes synced ✓'); updateCloudUI(); return; }
+      if (!confirm('Still can\'t sync. Your edits are safe on this device.\n\nSign out anyway?')) return;
+    } else if (!confirm('Sign out on this device? Data stays here and in the cloud.')) return;
+    await sb.auth.signOut(); return;
+  }
+  const email = (prompt('Your email — we\'ll send a 6-digit code:') || '').trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split('#')[0].split('?')[0] } });
+  if (error) { alert('Could not send the code: ' + error.message); return; }
+  const token = (prompt('Enter the 6-digit code from your email:') || '').trim();
+  if (!token) return;
+  const { error: vErr } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+  if (vErr) alert('That code didn\'t work: ' + vErr.message);
+}
+async function cloudPush(collection) {
+  if (!sb || !cloudUser || !household || cloudPulling) return;
+  const coll = CLOUD_COLLECTIONS[collection]; if (!coll) return;
+  const row = { household_id: household, owner_key: ownerKey(collection), collection, data: coll.get(), updated_at: new Date().toISOString() };
+  const { error } = await sb.from('trailhead_state').upsert(row, { onConflict: 'household_id,owner_key,collection' });
+  if (error) { cloudDirty[collection] = true; console.warn('push failed', collection, error.message); }
+  else delete cloudDirty[collection];
+  updateCloudUI();
+}
+async function pullAll() {
+  if (!sb || !cloudUser || !household) return;
+  for (const c of Object.keys(cloudDirty)) await cloudPush(c);
+  const { data, error } = await sb.from('trailhead_state').select('owner_key,collection,data').eq('household_id', household);
+  if (error) { console.warn('pull failed', error.message); return; }
+  const byColl = {};
+  for (const r of (data || [])) if (r.owner_key === 'shared' || r.owner_key === cloudUser.id) byColl[r.collection] = r.data;
+  const toPush = [];
+  cloudPulling = true;
+  try {
+    for (const [name, coll] of Object.entries(CLOUD_COLLECTIONS)) {
+      if (cloudDirty[name]) continue;
+      const cloud = byColl[name];
+      if (coll.kind === 'array') {
+        const localArr = coll.get() || [], cloudArr = Array.isArray(cloud) ? cloud : [];
+        const m = new Map();
+        for (const it of localArr) if (it?.[coll.key] != null) m.set(it[coll.key], it);
+        for (const it of cloudArr) if (it?.[coll.key] != null) m.set(it[coll.key], it);
+        const cloudKeys = new Set(cloudArr.map(it => it?.[coll.key]));
+        if (localArr.some(it => it && !cloudKeys.has(it[coll.key]))) toPush.push(name);
+        coll.set([...m.values()]);
+      } else {
+        if (cloud) coll.set(cloud); else if (coll.get()) toPush.push(name);
+      }
+    }
+  } finally { cloudPulling = false; }
+  for (const n of toPush) await cloudPush(n);
+}
+function subscribeCloud() {
+  if (!sb || !household || cloudChannel) return;
+  cloudChannel = sb.channel('trailhead-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'trailhead_state', filter: 'household_id=eq.' + household },
+      () => { if (!cloudPulling) pullAll(); })
+    .subscribe();
+}
+function unsubscribeCloud() { if (cloudChannel && sb) { sb.removeChannel(cloudChannel); cloudChannel = null; } }
+
+// ═════════════════════════════ INIT ════════════════════════════════════════
+applyTheme();
+loadLocal();
+renderCalendar();
+switchTab('home');
+cloudInit();
+</script>
+</body>
+</html>
