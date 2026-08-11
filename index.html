@@ -394,7 +394,7 @@
       <button class="btn" onclick="clearGotten()">Clear checked</button>
     </div>
     <div id="g-list"></div>
-    <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: spices → veggies → fruit → meat → dairy → chips/nuts → alcohol → misc. Shared — you both see the same list live.</p>
+    <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: fridge veggies → bread/nuts → fruit → room-temp veggies → meat → chips → dairy (bacon's here!) → misc → alcohol. Shared — you both see the same list live.</p>
   </div>
 
   <!-- ═══════════ MAP ═══════════ -->
@@ -422,6 +422,7 @@ const SESSION_TYPES = {
   swim:     { label: 'SWIM', em: '🏊', full: 'Swim', color: 'var(--swim)', kind: 'simple' },
   pz:       { label: 'PZ RIDE', em: '🚴', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
   tabata:   { label: 'TABATA', em: '🔥', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
+  yoga:     { label: 'YOGA', em: '🧘', full: 'Yoga', color: 'var(--swim)', kind: 'simple' },
   strength60:{ label: 'STR 60%', em: '🪶', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
   rest:     { label: '', em: '😴', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
 };
@@ -508,6 +509,9 @@ function loadLocal() {
   try { eatState = JSON.parse(localStorage.getItem('trailhead-eats-v1') || '{}') || {}; } catch { eatState = {}; }
   try { grocery = JSON.parse(localStorage.getItem('trailhead-grocery-v1') || '[]'); if (!Array.isArray(grocery)) grocery = []; } catch { grocery = []; }
   try { staples = JSON.parse(localStorage.getItem('trailhead-staples-v1') || 'null'); } catch { staples = null; }
+  // TJ's store-rearrangement migration (also fixes items mis-filed under Misc).
+  if (migrateGrocery(grocery)) saveGrocery();
+  if (Array.isArray(staples) && migrateGrocery(staples)) saveStaples();
 }
 function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} cloudPush('plan'); }
 function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
@@ -598,10 +602,12 @@ function renderCalendar() {
         const iso = isoOf(dayDate(wi, di));
         const done = log.some(l => l.date === iso && l.done);
         const swapSel = pendingSwap && pendingSwap.wi === wi && pendingSwap.di === di;
+        const st2 = d.t2 ? (SESSION_TYPES[d.t2] || null) : null;
+        const hasNote = log.some(l => l.date === iso && (l.note || '').trim());
         return `<div class="day sess-${d.t}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
-          <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}</div>
-          <div class="sess-em">${st.em}</div>
-          <div class="sess">${st.label || ''}${d.min ? `<div class="dur">${d.min} min</div>` : ''}</div>
+          <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}${hasNote ? ' 📝' : ''}</div>
+          <div class="sess-em">${st.em}${st2 ? st2.em : ''}</div>
+          <div class="sess">${st.label || ''}${d.min ? `<div class="dur">${d.min} min</div>` : ''}${st2 ? `<div class="dur" style="color:${st2.color};font-weight:700">+ ${st2.label}</div>` : ''}</div>
         </div>`;
       }).join('')}</div>
     </div>`;
@@ -632,18 +638,34 @@ function dayTap(wi, di) {
   openDayEditor(wi, di);
 }
 
-// Edit mode: pick what a day is, or arm a swap.
+// Edit mode: pick what a day is, add a second workout, or arm a swap.
+const DAY_OPTS = [
+  ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
+  ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['yoga', 'Yoga'],
+  ['strength60', 'Deload Strength'], ['rest', 'Rest'],
+];
 function openDayEditor(wi, di) {
-  const opts = [
-    ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
-    ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['strength60', 'Deload Strength'], ['rest', 'Rest'],
-  ];
+  const d = plan.weeks[wi].days[di];
   openSheet(`${dowOf(wi, di)}, ${escapeHtml(plan.weeks[wi].label)}`, `
     <div class="sess-pick">
       <button style="grid-column:1/-1;border-color:var(--accent);color:var(--accent)" onclick="armSwap(${wi},${di})">↔ Move / swap with another day…</button>
-      ${opts.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}</button>`).join('')}
+      ${DAY_OPTS.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}${d.t === t ? ' ✓' : ''}</button>`).join('')}
+      ${d.t2
+        ? `<button style="grid-column:1/-1;color:var(--danger)" onclick="setSecond(${wi},${di},null)">✕ Remove 2nd workout (${(SESSION_TYPES[d.t2]||{}).full || d.t2})</button>`
+        : `<button style="grid-column:1/-1" onclick="pickSecond(${wi},${di})">＋ Add a 2nd workout this day…</button>`}
     </div>
     <p class="hint" style="margin-top:12px">Swap moves the whole day. Rides and swims ask for minutes when you log them.</p>`);
+}
+function pickSecond(wi, di) {
+  openSheet('2nd workout — ' + dowOf(wi, di), `
+    <div class="sess-pick">
+      ${DAY_OPTS.filter(([t]) => t !== 'rest').map(([t, l]) => `<button onclick="setSecond(${wi},${di},'${t}')">${l}</button>`).join('')}
+    </div>`);
+}
+function setSecond(wi, di, t) {
+  const d = plan.weeks[wi].days[di];
+  if (t) d.t2 = t; else delete d.t2;
+  savePlan(); closeSheet(); renderCalendar();
 }
 function armSwap(wi, di) {
   pendingSwap = { wi, di };
@@ -678,16 +700,27 @@ function changeStartDate() {
 // ═════════════════════════════ SESSION VIEW / LOGGING ══════════════════════
 let activeSession = null;   // working copy while the sheet is open
 
-function openSession(wi, di) {
+function openSession(wi, di, which) {
   const d = plan.weeks[wi].days[di];
-  const st = SESSION_TYPES[d.t] || SESSION_TYPES.rest;
+  // Two workouts scheduled and no choice made yet: ask which one to open.
+  if (d.t2 && !which) {
+    const a = SESSION_TYPES[d.t], b = SESSION_TYPES[d.t2];
+    openSheet(dowOf(wi, di) + ' — two workouts', `
+      <div class="sess-pick">
+        <button onclick="closeSheet();openSession(${wi},${di},'t')">${a.em} ${a.full}</button>
+        <button onclick="closeSheet();openSession(${wi},${di},'t2')">${b.em} ${b.full}</button>
+      </div>`);
+    return;
+  }
+  const type = which === 't2' ? d.t2 : d.t;
+  const st = SESSION_TYPES[type] || SESSION_TYPES.rest;
   const iso = isoOf(dayDate(wi, di));
-  if (st.kind === 'rest') { showToast('Rest day — dailies only. Enjoy it.'); return; }
+  if (st.kind === 'rest') { openRestNote(iso); return; }
 
-  const existing = log.find(l => l.date === iso);
+  const existing = log.find(l => l.date === iso && l.type === type);
   if (st.kind === 'strength') {
     activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
-      id: 's' + Date.now(), date: iso, type: d.t, done: false,
+      id: 's' + Date.now(), date: iso, type, done: false,
       exercises: strengthTemplate().map(t => {
         const last = lastWeights(t.name);
         return { name: t.name, done: false,
@@ -697,22 +730,52 @@ function openSession(wi, di) {
     renderStrengthSheet(st.full + (d.t === 'strength60' ? '' : ''));
   } else if (st.kind === 'plyo') {
     activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
-      id: 's' + Date.now(), date: iso, type: d.t, done: false,
+      id: 's' + Date.now(), date: iso, type, done: false,
       exercises: PLYO_TEMPLATE.map(n => ({ name: n, done: false })),
     };
     renderPlyoSheet(st.full);
   } else {
-    activeSession = existing ? JSON.parse(JSON.stringify(existing)) : { id: 's' + Date.now(), date: iso, type: d.t, done: false, min: d.min || 30, note: '' };
+    activeSession = existing ? JSON.parse(JSON.stringify(existing)) : { id: 's' + Date.now(), date: iso, type, done: false, min: d.min || 30, note: '' };
     renderSimpleSheet(st.full);
   }
 }
 
 let exEditMode = false;   // reorganize the exercise list (add/remove/reorder/sets)
+let wtTick = null;        // live elapsed updater while a workout runs
+
+// ⏱ Workout stopwatch — hit start when you walk in, the log records how long it took.
+function fmtElapsed(ms) { const m = Math.floor(ms / 60000), s2 = Math.floor(ms / 1000) % 60; return m + ':' + String(s2).padStart(2, '0'); }
+function startWorkoutClock() {
+  activeSession.startedAt = Date.now();
+  stashSession(); renderStrengthOrPlyo();
+}
+function _clockHtml() {
+  const s = activeSession;
+  if (s.dur) return `<span class="badge star">⏱ ${s.dur} min</span>`;
+  if (s.startedAt) return `<span class="badge star" id="wt-elapsed">⏱ ${fmtElapsed(Date.now() - s.startedAt)}</span>`;
+  return `<button class="btn primary" onclick="startWorkoutClock()">⏱ Start workout</button>`;
+}
+function _armClock() {
+  clearInterval(wtTick);
+  if (activeSession?.startedAt && !activeSession.done)
+    wtTick = setInterval(() => {
+      const el = document.getElementById('wt-elapsed');
+      if (el) el.textContent = '⏱ ' + fmtElapsed(Date.now() - activeSession.startedAt);
+      else clearInterval(wtTick);
+    }, 1000);
+}
+// Average of past durations for this session type — sets expectations.
+function typicalDur(type) {
+  const ds = log.filter(l => l.type === type && l.dur > 0).map(l => l.dur);
+  return ds.length ? Math.round(ds.reduce((a, b) => a + b) / ds.length) : 0;
+}
 
 function renderStrengthSheet(title) {
   const s = activeSession;
+  const typ = typicalDur(s.type);
   openSheet(title + ' · ' + s.date, `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</span>
       <button class="btn${exEditMode ? ' editing' : ''}" onclick="toggleExEdit()">${exEditMode ? '✓ Done reorganizing' : '✎ Edit exercises'}</button>
     </div>
     ${s.exercises.map((ex, xi) => {
@@ -803,11 +866,14 @@ function renderStrengthOrPlyo(keepOpen) {
   if (activeSession.exercises[0]?.sets) renderStrengthSheet(SESSION_TYPES[activeSession.type].full + ' · ' + activeSession.date);
   else renderPlyoSheet(SESSION_TYPES[activeSession.type].full);
   [...new Set([...openIds, keepOpen])].forEach(i => { const el = document.getElementById('exsets-' + i); if (el) el.style.display = ''; });
+  _armClock();
 }
 
 function renderPlyoSheet(title) {
   const s = activeSession;
+  const typ = typicalDur(s.type);
   openSheet(title + ' · ' + s.date, `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</div>
     ${s.exercises.map((ex, xi) => `
       <div class="ex${ex.done ? ' done' : ''}">
         <div class="ex-head" onclick="toggleExDone(${xi})">
@@ -819,6 +885,28 @@ function renderPlyoSheet(title) {
       <button class="btn primary" onclick="finishSession()">Finish workout ✓</button>
     </div>
     <p class="hint" style="margin-top:10px">Once a week, never more. Any hop asymmetry: note it for the PT, don't push through.</p>`);
+}
+
+// Rest days take a comment — how you feel, what's sore, why you skipped.
+function openRestNote(iso) {
+  const existing = log.find(l => l.date === iso && l.type === 'rest');
+  activeSession = existing ? JSON.parse(JSON.stringify(existing))
+    : { id: 's' + Date.now(), date: iso, type: 'rest', done: false, note: '' };
+  openSheet('Rest day \u00b7 ' + iso, `
+    <textarea class="note-in" id="rest-note" placeholder="How are you feeling? Anything sore? (saves to the calendar as \u{1F4DD})">${escapeHtml(activeSession.note || '')}</textarea>
+    <div class="timer-go" style="margin-top:12px">
+      <button class="btn" onclick="closeSheet()">Close</button>
+      <button class="btn primary" onclick="saveRestNote()">Save note</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Rest day \u2014 dailies only. Enjoy it.</p>`);
+}
+function saveRestNote() {
+  const t = (document.getElementById('rest-note')?.value || '').trim();
+  activeSession.note = t;
+  if (t) stashSession();
+  else log = log.filter(l => !(l.date === activeSession.date && l.type === 'rest'));
+  saveLog(); closeSheet(); renderCalendar();
+  if (t) showToast('Note saved \u{1F4DD}');
 }
 
 function renderSimpleSheet(title) {
@@ -842,16 +930,18 @@ function pickSessionMin() {
 
 function stashSession() {
   // Keep the working copy in the log as we go, so nothing is lost mid-workout.
-  const i = log.findIndex(l => l.date === activeSession.date);
+  const i = log.findIndex(l => l.date === activeSession.date && l.type === activeSession.type);
   if (i >= 0) log[i] = activeSession; else log.push(activeSession);
   saveLog();
 }
 function finishSession() {
   activeSession.done = true;
+  if (activeSession.startedAt && !activeSession.dur)
+    activeSession.dur = Math.max(1, Math.round((Date.now() - activeSession.startedAt) / 60000));
   const note = document.getElementById('sess-note'); if (note) activeSession.note = note.value.trim();
   stashSession();
   closeSheet(); renderCalendar();
-  showToast('Logged. Nice work. 🏔');
+  showToast(activeSession.dur ? `Logged — ${activeSession.dur} min. Nice work. 🏔` : 'Logged. Nice work. 🏔');
 }
 function pickSetVal(xi, si, field) {
   const set = activeSession.exercises[xi].sets[si];
@@ -871,7 +961,7 @@ function openSheet(title, bodyHtml) {
   </div>`;
   document.body.appendChild(ov);
 }
-function closeSheet() { document.getElementById('sheet')?.remove(); exEditMode = false; }
+function closeSheet() { document.getElementById('sheet')?.remove(); exEditMode = false; clearInterval(wtTick); }
 
 function rangeVals(min, max, step) {
   const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
@@ -1487,17 +1577,70 @@ function drawMapPins() {
 // The TJ's list. Categories in THE order they walk the store; the list always
 // renders in walking order (AnyList's aisle-sort idea, hardcoded to their TJ's).
 // Checked items sink to the bottom of their category; "Clear checked" sweeps up.
-const G_CATS = ['Spices', 'Veggies', 'Fruit', 'Meat', 'Dairy', 'Chips/Nuts', 'Alcohol', 'Misc'];
-const G_EMOJI = { 'Spices':'🧂','Veggies':'🥦','Fruit':'🍌','Meat':'🥩','Dairy':'🥛','Chips/Nuts':'🥜','Alcohol':'🍷','Misc':'🧺' };
-// Known items auto-file into the right category on add (grows via staples edits).
-const G_KNOWN = { banana:'Fruit', bananas:'Fruit', 'greek yogurt':'Dairy', yogurt:'Dairy', eggs:'Dairy', bacon:'Meat',
-  milk:'Dairy', butter:'Dairy', cheese:'Dairy', chicken:'Meat', beef:'Meat', salmon:'Meat', avocado:'Veggies',
-  spinach:'Veggies', onion:'Veggies', onions:'Veggies', garlic:'Veggies', peppers:'Veggies', broccoli:'Veggies',
-  apples:'Fruit', berries:'Fruit', blueberries:'Fruit', lemon:'Fruit', limes:'Fruit', wine:'Alcohol', beer:'Alcohol',
-  almonds:'Chips/Nuts', cashews:'Chips/Nuts', chips:'Chips/Nuts', salt:'Spices', pepper:'Spices', cinnamon:'Spices' };
+const G_CATS = ['Fridge Veggies', 'Bread/Nuts', 'Fruit', 'Room-Temp Veggies', 'Meat', 'Chips', 'Dairy', 'Misc', 'Alcohol'];
+const G_EMOJI = { 'Fridge Veggies':'🥬','Bread/Nuts':'🍞','Fruit':'🍌','Room-Temp Veggies':'🧅','Meat':'🥩','Chips':'🍿','Dairy':'🥛','Misc':'🧺','Alcohol':'🍷' };
+// Old category names → new (TJ's rearranged the store, Aug 2026).
+const G_MIGRATE = { 'Spices':'Misc', 'Veggies':'Fridge Veggies', 'Chips/Nuts':'Chips' };
+// Known items auto-file into the right category on add. TJ's quirk honored:
+// bacon lives in the DAIRY case at their store.
+const G_KNOWN = {
+  // fridge veggies (the cold case)
+  spinach:'Fridge Veggies', lettuce:'Fridge Veggies', salad:'Fridge Veggies', arugula:'Fridge Veggies',
+  broccoli:'Fridge Veggies', 'green beans':'Fridge Veggies', peppers:'Fridge Veggies', cucumber:'Fridge Veggies',
+  carrots:'Fridge Veggies', mushroom:'Fridge Veggies', celery:'Fridge Veggies', kale:'Fridge Veggies',
+  'brussels':'Fridge Veggies', zucchini:'Fridge Veggies', herbs:'Fridge Veggies', cilantro:'Fridge Veggies',
+  // bread / nuts
+  bread:'Bread/Nuts', bagel:'Bread/Nuts', tortilla:'Bread/Nuts', bun:'Bread/Nuts', pita:'Bread/Nuts',
+  almonds:'Bread/Nuts', cashews:'Bread/Nuts', walnuts:'Bread/Nuts', pistachios:'Bread/Nuts',
+  'peanut butter':'Bread/Nuts', nuts:'Bread/Nuts', granola:'Bread/Nuts',
+  // fruit
+  banana:'Fruit', apples:'Fruit', berries:'Fruit', blueberries:'Fruit', strawberries:'Fruit',
+  grapes:'Fruit', lemon:'Fruit', lime:'Fruit', orange:'Fruit', mango:'Fruit', peach:'Fruit',
+  // room-temp veggies
+  onion:'Room-Temp Veggies', garlic:'Room-Temp Veggies', potato:'Room-Temp Veggies',
+  'sweet potato':'Room-Temp Veggies', avocado:'Room-Temp Veggies', tomato:'Room-Temp Veggies',
+  squash:'Room-Temp Veggies', shallot:'Room-Temp Veggies',
+  // meat (bacon deliberately NOT here)
+  hamburger:'Meat', 'ground beef':'Meat', 'ground turkey':'Meat', beef:'Meat', steak:'Meat',
+  chicken:'Meat', turkey:'Meat', salmon:'Meat', shrimp:'Meat', fish:'Meat', sausage:'Meat', 'pork':'Meat',
+  // chips
+  chips:'Chips', popcorn:'Chips', pretzels:'Chips', crackers:'Chips', salsa:'Chips',
+  // dairy (incl. TJ's bacon placement)
+  'greek yogurt':'Dairy', yogurt:'Dairy', eggs:'Dairy', milk:'Dairy', butter:'Dairy',
+  cheese:'Dairy', 'cream cheese':'Dairy', 'sour cream':'Dairy', creamer:'Dairy', bacon:'Dairy',
+  // alcohol
+  wine:'Alcohol', beer:'Alcohol', whiskey:'Alcohol', bourbon:'Alcohol', seltzer:'Alcohol',
+  // misc
+  salt:'Misc', pepper:'Misc', cinnamon:'Misc', coffee:'Misc', olive:'Misc', 'olive oil':'Misc',
+};
+// One-time migration: remap old categories, and re-guess anything stuck in Misc
+// (e.g. hamburger meat) now that the known-items map is smarter.
+function migrateGrocery(items) {
+  let changed = false;
+  for (const g of items) {
+    if (G_MIGRATE[g.cat]) { g.cat = G_MIGRATE[g.cat]; changed = true; }
+    if (!G_CATS.includes(g.cat)) { g.cat = 'Misc'; changed = true; }
+    if (g.cat === 'Misc') {
+      const better = guessCatStrict(g.name);
+      if (better && better !== 'Misc') { g.cat = better; changed = true; }
+    }
+    const n = g.name.toLowerCase();
+    // Store-move specials: bacon now lives in dairy; nuts split away from chips.
+    if (n.includes('bacon') && g.cat === 'Meat') { g.cat = 'Dairy'; changed = true; }
+    if (g.cat === 'Chips' && /nut|almond|cashew|pistachio|walnut|pecan/.test(n)) { g.cat = 'Bread/Nuts'; changed = true; }
+  }
+  return changed;
+}
+// Like guessCat but returns null instead of falling back to the picked chip.
+function guessCatStrict(name) {
+  const n = name.toLowerCase();
+  if (G_KNOWN[n]) return G_KNOWN[n];
+  for (const [k, c] of Object.entries(G_KNOWN)) if (n.includes(k)) return c;
+  return null;
+}
 const DEFAULT_STAPLES = [
   { name: 'Bananas', cat: 'Fruit' }, { name: 'Greek yogurt', cat: 'Dairy' },
-  { name: 'Eggs', cat: 'Dairy' }, { name: 'Bacon', cat: 'Meat' },
+  { name: 'Eggs', cat: 'Dairy' }, { name: 'Bacon', cat: 'Dairy' },   // TJ's shelves bacon in the dairy case
 ];
 
 let grocery = [];            // [{id,name,cat,got}] — SHARED
@@ -1513,12 +1656,7 @@ function saveStaples() {
   try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(staples)); } catch {}
   cloudPush('staples');
 }
-function guessCat(name) {
-  const n = name.toLowerCase();
-  if (G_KNOWN[n]) return G_KNOWN[n];
-  for (const [k, c] of Object.entries(G_KNOWN)) if (n.includes(k)) return c;
-  return gCat;
-}
+function guessCat(name) { return guessCatStrict(name) || gCat; }
 function addGrocery() {
   const inp = document.getElementById('g-input');
   const name = (inp.value || '').trim();
@@ -1604,7 +1742,7 @@ const CLOUD_COLLECTIONS = {
     set: v => { if (v && typeof v === 'object') { eatState = v; try { localStorage.setItem('trailhead-eats-v1', JSON.stringify(v)); } catch {} renderEats(); } } },
   grocery: { owner: 'shared', kind: 'array', key: 'id',
     get: () => grocery,
-    set: v => { if (Array.isArray(v)) { grocery = v; try { localStorage.setItem('trailhead-grocery-v1', JSON.stringify(v)); } catch {} renderGrocery(); } } },
+    set: v => { if (Array.isArray(v)) { migrateGrocery(v); grocery = v; try { localStorage.setItem('trailhead-grocery-v1', JSON.stringify(v)); } catch {} renderGrocery(); } } },
   staples: { owner: 'shared', kind: 'object',
     get: () => staples,
     set: v => { if (Array.isArray(v)) { staples = v; try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(v)); } catch {} } } },

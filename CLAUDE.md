@@ -19,6 +19,7 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - RLS via `trailhead_is_member()`; first sign-in claims an invite via `trailhead_join()` RPC. To add Michael's wife: insert her email into `trailhead_invites` for the Ross House household, then she signs in with the OTP flow.
 
 ## Workout module
+- Session types include **yoga**; a day can hold a **2nd workout** (`d.t2`, chooser sheet on open); **rest days take notes** (📝 on the calendar); strength/plyo sheets have a **⏱ workout stopwatch** (start → finish logs `dur` minutes, shows 'usually ~N min' from past averages). Log entries key on **date+type**.
 - **Plan**: program-driven calendar seeded from Michael's PT program (2-week repeating cycle ×3 = 6-week build + week-7 deload). Edit mode (✎) lets any day be reassigned. Session types: strength / plyo / swim / pz / tabata / strength60 / rest.
 - **Strength logging**: exercises from `strengthTemplate()` (user-edited `plan.strengthTemplate`, falling back to `STRENGTH_TEMPLATE` — seeded from Michael's real 2026-08-08 session), checkbox per set, weight+reps via scroll-drum picker, **pre-filled from the most recent logged session** (`lastWeights()`). "✎ Edit exercises" inside the sheet: reorder/add/remove/±sets; any change becomes the default list for future sessions via `syncTemplateFromSession()`.
 - **Family shared drive** (the real source of truth for family data): `~/Library/CloudStorage/GoogleDrive-michael.columbus.ross@gmail.com/.shortcut-targets-by-id/17tH6tMkCTP3fBd0qwkmDxt5nSlX_N14b/M & F 4eva/` — contains the CURRENT `Baseline Fitness Program.xlsx` (newer than ~/Downloads), plus Car Maintenance Tracker / Home Improvement Tracker / Finances / Travel — the natural seeds for the House and future modules.
@@ -34,7 +35,7 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - Source sheets: `M & F 4eva/Activities!/Local Hikes.gsheet` + `Places to Eat - Nashville.gsheet` (gsheets are cloud pointers — ask Michael to download xlsx to read).
 
 ## Grocery module (added 2026-08-09)
-- Shared list in **their Trader Joe's walking order**: Spices → Veggies → Fruit → Meat → Dairy → Chips/Nuts → Alcohol → Misc (`G_CATS` — never reorder without asking).
+- Shared list in **their Trader Joe's walking order** (store rearranged Aug 2026): Fridge Veggies → Bread/Nuts → Fruit → Room-Temp Veggies → Meat → Chips → Dairy → Misc → Alcohol (`G_CATS` — never reorder without asking). **TJ's quirk: bacon files under Dairy**, not Meat. `migrateGrocery()` remaps old categories on load and on cloud pull.
 - ⭐ **Add staples** one-taps the staple set (default: Bananas, Greek yogurt, Eggs, Bacon; editable via ✎, synced as `staples` collection). `G_KNOWN` auto-files common items into categories.
 - Checked items strike through and sink within their category; "Clear checked" sweeps. Collections `grocery` (array) + `staples` (object), both shared.
 
