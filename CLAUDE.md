@@ -37,7 +37,8 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 ## Grocery module (added 2026-08-09)
 - Shared list in **their Trader Joe's walking order** (store rearranged Aug 2026): Fridge Veggies → Bread/Nuts → Fruit → Room-Temp Veggies → Meat → Chips → Dairy → Misc → Alcohol (`G_CATS` — never reorder without asking). **TJ's quirk: bacon files under Dairy**, not Meat. `migrateGrocery()` remaps old categories on load and on cloud pull.
 - ⭐ **Add staples** one-taps the staple set (default: Bananas, Greek yogurt, Eggs, Bacon; editable via ✎, synced as `staples` collection). `G_KNOWN` auto-files common items into categories.
-- Checked items strike through and sink within their category; "Clear checked" sweeps. Collections `grocery` (array) + `staples` (object), both shared.
+- Checked items strike through and sink within their category; "Clear checked" sweeps. Collections `grocery` (array) + `staples` (object) + `recipes` (array), all shared.
+- **Amounts**: leading number+unit parses on add ("2 lb hamburger meat"), `#` button edits per item, shown as an accent chip. **Recipes** (🍳): named ingredient lists, ＋Add dumps all items with amounts (dups skipped, amounts updated); "Save current list as recipe" snapshots the unchecked list.
 
 ## Timers
 - Repeat beeper: one interval, beeps (Web Audio double-beep) every cycle until stopped.

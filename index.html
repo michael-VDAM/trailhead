@@ -159,6 +159,7 @@
     .g-item { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; margin-bottom: 6px; cursor: pointer; }
     .g-item .g-chk { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 13px; font-weight: 800; }
     .g-item .g-nm { font-size: 14px; font-weight: 600; flex: 1; }
+    .g-qty { font-size: 11px; color: var(--accent); font-weight: 700; background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; margin-left: 4px; }
     .g-item .g-x { background: none; border: none; color: var(--muted2); font-size: 15px; cursor: pointer; padding: 2px 6px; }
     .g-item .g-x:hover { color: var(--danger); }
     .g-item.got { opacity: 0.5; }
@@ -393,6 +394,7 @@
       <button class="btn" onclick="editStaples()">✎ Edit staples</button>
       <button class="btn" onclick="clearGotten()">Clear checked</button>
     </div>
+    <div id="g-recipes"></div>
     <div id="g-list"></div>
     <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: fridge veggies → bread/nuts → fruit → room-temp veggies → meat → chips → dairy (bacon's here!) → misc → alcohol. Shared — you both see the same list live.</p>
   </div>
@@ -509,6 +511,7 @@ function loadLocal() {
   try { eatState = JSON.parse(localStorage.getItem('trailhead-eats-v1') || '{}') || {}; } catch { eatState = {}; }
   try { grocery = JSON.parse(localStorage.getItem('trailhead-grocery-v1') || '[]'); if (!Array.isArray(grocery)) grocery = []; } catch { grocery = []; }
   try { staples = JSON.parse(localStorage.getItem('trailhead-staples-v1') || 'null'); } catch { staples = null; }
+  try { recipes = JSON.parse(localStorage.getItem('trailhead-recipes-v1') || '[]'); if (!Array.isArray(recipes)) recipes = []; } catch { recipes = []; }
   // TJ's store-rearrangement migration (also fixes items mis-filed under Misc).
   if (migrateGrocery(grocery)) saveGrocery();
   if (Array.isArray(staples) && migrateGrocery(staples)) saveStaples();
@@ -1659,15 +1662,35 @@ function saveStaples() {
   cloudPush('staples');
 }
 function guessCat(name) { return guessCatStrict(name) || gCat; }
+// "2 lb hamburger meat" → qty "2 lb", name "hamburger meat". Leading number
+// (with optional unit) is treated as the amount; everything else is the item.
+const QTY_RE = /^(\d[\d./]*\s*(?:x|lb|lbs|oz|g|kg|pack|packs|can|cans|bottle|bottles|bunch|bag|bags|box|boxes|dozen|jar|jars)?)\s+(.+)$/i;
+function parseItem(text) {
+  const m = text.match(QTY_RE);
+  return m ? { qty: m[1].trim(), name: m[2].trim() } : { qty: '', name: text.trim() };
+}
+function pushGroceryItem(name, qty, cat) {
+  const existing = grocery.find(g => !g.got && g.name.toLowerCase() === name.toLowerCase());
+  if (existing) { if (qty) { existing.qty = qty; } return false; }
+  grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, qty: qty || '', cat: cat || guessCat(name), got: false });
+  return true;
+}
 function addGrocery() {
   const inp = document.getElementById('g-input');
-  const name = (inp.value || '').trim();
-  if (!name) return;
-  if (grocery.some(g => !g.got && g.name.toLowerCase() === name.toLowerCase())) { showToast('Already on the list'); inp.value=''; return; }
-  grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, cat: guessCat(name), got: false });
+  const raw = (inp.value || '').trim();
+  if (!raw) return;
+  const { qty, name } = parseItem(raw);
+  if (!pushGroceryItem(name, qty)) showToast('Already on the list' + (qty ? ' — amount updated' : ''));
   inp.value = '';
   saveGrocery(); renderGrocery();
   inp.focus();
+}
+function setQty(id) {
+  const g = grocery.find(g => g.id === id); if (!g) return;
+  const v = prompt('Amount for ' + g.name + ' (empty to clear):', g.qty || '');
+  if (v == null) return;
+  g.qty = v.trim();
+  saveGrocery(); renderGrocery();
 }
 function addStaples() {
   let added = 0;
@@ -1712,10 +1735,83 @@ function renderGrocery() {
     return `<div class="group-title">${G_EMOJI[cat]} ${cat}</div>` + items.map(g => `
       <div class="g-item${g.got?' got':''}" onclick="toggleGrocery('${g.id}')">
         <span class="g-chk">✓</span>
-        <span class="g-nm">${escapeHtml(g.name)}</span>
+        <span class="g-nm">${escapeHtml(g.name)}${g.qty?` <span class="g-qty">${escapeHtml(g.qty)}</span>`:''}</span>
+        <button class="g-x" title="Set amount" onclick="event.stopPropagation();setQty('${g.id}')">#</button>
         <button class="g-x" onclick="event.stopPropagation();removeGrocery('${g.id}')">✕</button>
       </div>`).join('');
   }).join('');
+  renderRecipes();
+}
+
+// ═════════════════════════════ RECIPES ═════════════════════════════════════
+// Named ingredient lists — one tap dumps a whole recipe onto the grocery list
+// (amounts included, dups skipped). Shared + editable; "Save list as recipe"
+// turns tonight's list into next month's one-tap.
+let recipes = [];    // [{id,name,items:[{name,qty,cat}]}] — SHARED
+function saveRecipes() {
+  try { localStorage.setItem('trailhead-recipes-v1', JSON.stringify(recipes)); } catch {}
+  cloudPush('recipes');
+}
+function renderRecipes() {
+  const el = document.getElementById('g-recipes'); if (!el) return;
+  el.innerHTML = `<div class="group-title">🍳 Recipes</div>
+    ${recipes.map(r => `
+      <div class="g-item" style="cursor:default">
+        <button class="btn primary" style="padding:5px 12px" onclick="addRecipeToList('${r.id}')">＋ Add</button>
+        <span class="g-nm">${escapeHtml(r.name)} <span class="g-qty">${r.items.length} items</span></span>
+        <button class="g-x" onclick="editRecipe('${r.id}')">✎</button>
+        <button class="g-x" onclick="deleteRecipe('${r.id}')">✕</button>
+      </div>`).join('')}
+    <div class="g-actions" style="margin-top:8px">
+      <button class="btn" onclick="editRecipe(null)">＋ New recipe</button>
+      <button class="btn" onclick="saveListAsRecipe()">💾 Save current list as recipe</button>
+    </div>`;
+}
+function addRecipeToList(id) {
+  const r = recipes.find(r => r.id === id); if (!r) return;
+  let added = 0;
+  for (const it of r.items) if (pushGroceryItem(it.name, it.qty, it.cat)) added++;
+  saveGrocery(); renderGrocery();
+  showToast(added ? `🍳 ${r.name}: ${added} item${added>1?'s':''} added` : `${r.name} is already all on the list`);
+}
+function editRecipe(id) {
+  const r = id ? recipes.find(r => r.id === id) : null;
+  const lines = r ? r.items.map(it => (it.qty ? it.qty + ' ' : '') + it.name).join('\n') : '';
+  openSheet(r ? 'Edit recipe' : 'New recipe', `
+    <input class="note-like" id="rcp-name" placeholder="Recipe name — e.g. Taco Night" value="${r ? escapeHtml(r.name) : ''}" style="margin-bottom:8px">
+    <textarea class="note-in" id="rcp-items" style="min-height:150px" placeholder="One ingredient per line, amount first:\n1 lb hamburger meat\n2 avocado\ntortilla\ntaco seasoning">${escapeHtml(lines)}</textarea>
+    <div class="timer-go" style="margin-top:12px">
+      <button class="btn" onclick="closeSheet()">Cancel</button>
+      <button class="btn primary" onclick="saveRecipeFromSheet('${id || ''}')">Save recipe</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Amounts are optional. Items auto-file into the right store section when added.</p>`);
+}
+function saveRecipeFromSheet(id) {
+  const name = (document.getElementById('rcp-name')?.value || '').trim();
+  const lines = (document.getElementById('rcp-items')?.value || '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (!name || !lines.length) { showToast('Needs a name and at least one item'); return; }
+  const items = lines.map(l => { const p = parseItem(l); return { name: p.name, qty: p.qty, cat: guessCatStrict(p.name) || 'Misc' }; });
+  const existing = id ? recipes.find(r => r.id === id) : null;
+  if (existing) { existing.name = name; existing.items = items; }
+  else recipes.push({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name, items });
+  saveRecipes(); closeSheet(); renderRecipes();
+  showToast('Recipe saved 🍳');
+}
+function deleteRecipe(id) {
+  const r = recipes.find(r => r.id === id); if (!r) return;
+  if (!confirm('Delete recipe "' + r.name + '"?')) return;
+  recipes = recipes.filter(r => r.id !== id);
+  saveRecipes(); renderRecipes();
+}
+function saveListAsRecipe() {
+  const open = grocery.filter(g => !g.got);
+  if (!open.length) { showToast('List is empty — add items first'); return; }
+  const name = (prompt('Name this recipe (saves the ' + open.length + ' unchecked items):') || '').trim();
+  if (!name) return;
+  recipes.push({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name,
+    items: open.map(g => ({ name: g.name, qty: g.qty || '', cat: g.cat })) });
+  saveRecipes(); renderRecipes();
+  showToast('Saved 🍳 — one tap re-adds it all next time');
 }
 
 // ═════════════════════════════ CLOUD SYNC (Supabase, household) ═════════════
@@ -1745,6 +1841,9 @@ const CLOUD_COLLECTIONS = {
   grocery: { owner: 'shared', kind: 'array', key: 'id',
     get: () => grocery,
     set: v => { if (Array.isArray(v)) { migrateGrocery(v); grocery = v; try { localStorage.setItem('trailhead-grocery-v1', JSON.stringify(v)); } catch {} renderGrocery(); } } },
+  recipes: { owner: 'shared', kind: 'array', key: 'id',
+    get: () => recipes,
+    set: v => { if (Array.isArray(v)) { recipes = v; try { localStorage.setItem('trailhead-recipes-v1', JSON.stringify(v)); } catch {} renderRecipes(); } } },
   staples: { owner: 'shared', kind: 'object',
     get: () => staples,
     set: v => { if (Array.isArray(v)) { staples = v; try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(v)); } catch {} } } },
