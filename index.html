@@ -112,6 +112,10 @@
     .ex-tool:hover { color: var(--accent); border-color: var(--accent); }
     .ex-tool:disabled { opacity: 0.3; cursor: default; }
     .ex-tool.danger:hover { color: var(--danger); border-color: var(--danger); }
+    .ex-meta { display: flex; gap: 6px; padding: 0 13px 10px; flex-wrap: wrap; }
+    .detailchip { color: var(--accent) !important; }
+    .super-label { font-size: 10.5px; font-weight: 700; color: var(--text); border-left: 3px solid; padding: 3px 0 3px 9px; margin: 6px 0 -3px; opacity: 0.85; }
+    .ex.in-super { border-left: 3px solid var(--border); margin-left: 2px; }
 
     /* ═══════════════════════ HIKES + EATS ═══════════════════════ */
     .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
@@ -138,7 +142,8 @@
     .card .desc { font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 3px; }
     .card .desc .us { color: var(--accent); font-weight: 600; }
     .card .badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; align-items: center; }
-    .badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; border-radius: 4px; padding: 2px 7px; background: var(--panel3); color: var(--muted); }
+    .badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; border-radius: 4px; padding: 2px 7px; background: var(--panel3); color: var(--muted); border: none; }
+    button.badge { cursor: pointer; font-family: inherit; }
     .badge.water { color: var(--swim); }
     .badge.hard { color: var(--danger); }
     .badge.closed { background: var(--danger); color: #fff; }
@@ -420,7 +425,7 @@ const THEME_KEY = 'trailhead-theme';
 // Session type registry. Colors map to CSS vars.
 const SESSION_TYPES = {
   strength: { label: 'STRENGTH', em: '🏋️', full: 'Full Body Strength', color: 'var(--strength)', kind: 'strength' },
-  plyo:     { label: 'PLYO+RUN', em: '💥', full: 'Plyo Day + Run/Walk', color: 'var(--plyo)', kind: 'plyo' },
+  plyo:     { label: 'PLYO+RUN', em: '💥', full: 'Plyo Day + Run/Walk', color: 'var(--plyo)', kind: 'exset' },
   swim:     { label: 'SWIM', em: '🏊', full: 'Swim', color: 'var(--swim)', kind: 'simple' },
   pz:       { label: 'PZ RIDE', em: '🚴', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
   tabata:   { label: 'TABATA', em: '🔥', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
@@ -428,6 +433,26 @@ const SESSION_TYPES = {
   strength60:{ label: 'STR 60%', em: '🪶', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
   rest:     { label: '', em: '😴', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
 };
+// Custom types (Pull, Push, whatever) — user-created, always kind 'exset',
+// stored in plan.customTypes and merged in here so every lookup just works.
+const CUSTOM_COLORS = ['var(--danger)', 'var(--plyo)', 'var(--tabata)', 'var(--ride)', 'var(--swim)'];
+function typeOf(key) {
+  return SESSION_TYPES[key] || (plan?.customTypes || []).find(c => c.key === key) || SESSION_TYPES.rest;
+}
+function customTypeOpts() { return (plan?.customTypes || []).map(c => [c.key, c.full]); }
+function newCustomType(onDone) {
+  const name = (prompt('Name the workout (e.g. Pull, Push, Mobility):') || '').trim();
+  if (!name) return;
+  const key = 'c_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + Date.now().toString(36).slice(-3);
+  if (typeOf(key).full !== 'Rest (dailies only)' || (plan.customTypes||[]).some(c => c.full.toLowerCase() === name.toLowerCase())) {
+    showToast('You already have a "' + name + '" workout'); return;
+  }
+  plan.customTypes = plan.customTypes || [];
+  const color = CUSTOM_COLORS[plan.customTypes.length % CUSTOM_COLORS.length];
+  plan.customTypes.push({ key, label: name.slice(0, 10).toUpperCase(), em: '💪', full: name, color, kind: 'exset' });
+  savePlan();
+  onDone(key);
+}
 
 // The Baseline Fitness Program, seeded from the PT program docs (Aug 2026).
 // 2-week cycle × 3 = 6-week build, then a deload week. SATURDAY-start, matching
@@ -491,11 +516,33 @@ function syncTemplateFromSession() {
   savePlan();
 }
 
-const PLYO_TEMPLATE = [
-  'Pogos 4 × 20s', 'Lateral Line Hops 4 × 20s', 'Depth Drop 2 × 10', 'Broad Jump 4 × 5',
-  'Box Jump 2 × 10', 'Single-Leg Lateral Hop 4 sets', 'Single-Leg Forward Hop 4 sets',
-  'Nordic 4 × 6', 'Back Extensions 3 × 13', 'Side Bends 3 × 12', 'Run/Walk intervals (per week block)',
-];
+// Exset ("everything that isn't strength but still has a movement list") —
+// covers Plyo plus any custom type (Pull, Push...). Exercise shape:
+// { name, done, detail: free text ("24 in, 3 sets" / "4x20s"), note, super: null|'A'|'B'|'C' }
+const EXSET_TEMPLATES = {
+  plyo: [
+    { name: 'Pogos', detail: '4 × 20s' }, { name: 'Lateral Line Hops', detail: '4 × 20s' },
+    { name: 'Depth Drop', detail: '2 × 10' }, { name: 'Broad Jump', detail: '4 × 5' },
+    { name: 'Box Jump', detail: '24 in · 2 × 10' }, { name: 'Single-Leg Lateral Hop', detail: '4 sets' },
+    { name: 'Single-Leg Forward Hop', detail: '4 sets' }, { name: 'Nordic', detail: '4 × 6' },
+    { name: 'Back Extensions', detail: '3 × 13' }, { name: 'Side Bends', detail: '3 × 12' },
+    { name: 'Run/Walk intervals', detail: 'per week block' },
+  ],
+};
+function exsetTemplate(type) {
+  const t = (plan?.exsetTemplates || {})[type];
+  return (Array.isArray(t) && t.length) ? t : (EXSET_TEMPLATES[type] || []);
+}
+// Any list/detail/superset change inside an exset session becomes the
+// template for future sessions of that same type.
+function syncExsetTemplateFromSession() {
+  if (!activeSession?.exercises || typeOf(activeSession.type).kind !== 'exset') return;
+  plan.exsetTemplates = plan.exsetTemplates || {};
+  plan.exsetTemplates[activeSession.type] = activeSession.exercises.map(ex => ({
+    name: ex.name, detail: ex.detail || '', super: ex.super || null,
+  }));
+  savePlan();
+}
 
 let plan = null;       // { startDate, weeks: [{label, days:[{t,min?}]}] }
 let log = [];          // [{ id, date, type, done, exercises?, note?, min? }]
@@ -601,13 +648,13 @@ function renderCalendar() {
     return `<div class="week">
       <div class="week-label">${escapeHtml(wk.label)} <span class="range">${range}</span>${weekTools}</div>
       <div class="days">${wk.days.map((d, di) => {
-        const st = SESSION_TYPES[d.t] || SESSION_TYPES.rest;
+        const st = typeOf(d.t);
         const iso = isoOf(dayDate(wi, di));
         const done = log.some(l => l.date === iso && l.done);
         const swapSel = pendingSwap && pendingSwap.wi === wi && pendingSwap.di === di;
-        const st2 = d.t2 ? (SESSION_TYPES[d.t2] || null) : null;
+        const st2 = d.t2 ? typeOf(d.t2) : null;
         const hasNote = log.some(l => l.date === iso && (l.note || '').trim());
-        return `<div class="day sess-${d.t}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
+        return `<div class="day${d.t === 'rest' ? ' sess-rest' : ''}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
           <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}${hasNote ? ' 📝' : ''}</div>
           <div class="sess-em">${st.em}${st2 ? st2.em : ''}</div>
           <div class="sess">${st.label || ''}${d.min ? `<div class="dur">${d.min} min</div>` : ''}${st2 ? `<div class="dur" style="color:${st2.color};font-weight:700">+ ${st2.label}</div>` : ''}</div>
@@ -649,20 +696,24 @@ const DAY_OPTS = [
 ];
 function openDayEditor(wi, di) {
   const d = plan.weeks[wi].days[di];
+  const opts = DAY_OPTS.concat(customTypeOpts());
   openSheet(`${dowOf(wi, di)}, ${escapeHtml(plan.weeks[wi].label)}`, `
     <div class="sess-pick">
       <button style="grid-column:1/-1;border-color:var(--accent);color:var(--accent)" onclick="armSwap(${wi},${di})">↔ Move / swap with another day…</button>
-      ${DAY_OPTS.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}${d.t === t ? ' ✓' : ''}</button>`).join('')}
+      ${opts.map(([t, l]) => `<button onclick="setDay(${wi},${di},'${t}')">${l}${d.t === t ? ' ✓' : ''}</button>`).join('')}
+      <button style="grid-column:1/-1" onclick="newCustomType(k=>{setDay(${wi},${di},k)})">＋ New workout type…</button>
       ${d.t2
-        ? `<button style="grid-column:1/-1;color:var(--danger)" onclick="setSecond(${wi},${di},null)">✕ Remove 2nd workout (${(SESSION_TYPES[d.t2]||{}).full || d.t2})</button>`
+        ? `<button style="grid-column:1/-1;color:var(--danger)" onclick="setSecond(${wi},${di},null)">✕ Remove 2nd workout (${typeOf(d.t2).full})</button>`
         : `<button style="grid-column:1/-1" onclick="pickSecond(${wi},${di})">＋ Add a 2nd workout this day…</button>`}
     </div>
     <p class="hint" style="margin-top:12px">Swap moves the whole day. Rides and swims ask for minutes when you log them.</p>`);
 }
 function pickSecond(wi, di) {
+  const opts = DAY_OPTS.filter(([t]) => t !== 'rest').concat(customTypeOpts());
   openSheet('2nd workout — ' + dowOf(wi, di), `
     <div class="sess-pick">
-      ${DAY_OPTS.filter(([t]) => t !== 'rest').map(([t, l]) => `<button onclick="setSecond(${wi},${di},'${t}')">${l}</button>`).join('')}
+      ${opts.map(([t, l]) => `<button onclick="setSecond(${wi},${di},'${t}')">${l}</button>`).join('')}
+      <button style="grid-column:1/-1" onclick="newCustomType(k=>{setSecond(${wi},${di},k)})">＋ New workout type…</button>
     </div>`);
 }
 function setSecond(wi, di, t) {
@@ -707,7 +758,7 @@ function openSession(wi, di, which) {
   const d = plan.weeks[wi].days[di];
   // Two workouts scheduled and no choice made yet: ask which one to open.
   if (d.t2 && !which) {
-    const a = SESSION_TYPES[d.t], b = SESSION_TYPES[d.t2];
+    const a = typeOf(d.t), b = typeOf(d.t2);
     openSheet(dowOf(wi, di) + ' — two workouts', `
       <div class="sess-pick">
         <button onclick="closeSheet();openSession(${wi},${di},'t')">${a.em} ${a.full}</button>
@@ -716,14 +767,14 @@ function openSession(wi, di, which) {
     return;
   }
   const type = which === 't2' ? d.t2 : d.t;
-  const st = SESSION_TYPES[type] || SESSION_TYPES.rest;
+  const st = typeOf(type);
   const iso = isoOf(dayDate(wi, di));
   if (st.kind === 'rest') { openRestNote(iso); return; }
 
   const existing = log.find(l => l.date === iso && l.type === type);
   if (st.kind === 'strength') {
     activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
-      id: 's' + Date.now(), date: iso, type, done: false,
+      id: 's' + Date.now(), date: iso, type, done: false, note: '',
       exercises: strengthTemplate().map(t => {
         const last = lastWeights(t.name);
         return { name: t.name, done: false,
@@ -731,12 +782,12 @@ function openSession(wi, di, which) {
       }),
     };
     renderStrengthSheet(st.full + (d.t === 'strength60' ? '' : ''));
-  } else if (st.kind === 'plyo') {
+  } else if (st.kind === 'exset') {
     activeSession = existing && existing.exercises ? JSON.parse(JSON.stringify(existing)) : {
-      id: 's' + Date.now(), date: iso, type, done: false,
-      exercises: PLYO_TEMPLATE.map(n => ({ name: n, done: false })),
+      id: 's' + Date.now(), date: iso, type, done: false, note: '',
+      exercises: exsetTemplate(type).map(t => ({ name: t.name, done: false, detail: t.detail || '', note: '', super: t.super || null })),
     };
-    renderPlyoSheet(st.full);
+    renderExsetSheet(st.full);
   } else {
     activeSession = existing ? JSON.parse(JSON.stringify(existing)) : { id: 's' + Date.now(), date: iso, type, done: false, min: d.min || 30, note: '' };
     renderSimpleSheet(st.full);
@@ -750,7 +801,7 @@ let wtTick = null;        // live elapsed updater while a workout runs
 function fmtElapsed(ms) { const m = Math.floor(ms / 60000), s2 = Math.floor(ms / 1000) % 60; return m + ':' + String(s2).padStart(2, '0'); }
 function startWorkoutClock() {
   activeSession.startedAt = Date.now();
-  stashSession(); renderStrengthOrPlyo();
+  stashSession(); _rerenderSession();
 }
 function _clockHtml() {
   const s = activeSession;
@@ -773,14 +824,22 @@ function typicalDur(type) {
   return ds.length ? Math.round(ds.reduce((a, b) => a + b) / ds.length) : 0;
 }
 
-function renderStrengthSheet(title) {
-  const s = activeSession;
-  const typ = typicalDur(s.type);
-  openSheet(title + ' · ' + s.date, `
+// Shared header row: clock + typical-duration hint + edit toggle + note field.
+// Every workout kind (strength, exset) gets the same top bar and a notes box.
+function _sessionHead(s, typ) {
+  return `
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <span style="display:flex;align-items:center;gap:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</span>
       <button class="btn${exEditMode ? ' editing' : ''}" onclick="toggleExEdit()">${exEditMode ? '✓ Done reorganizing' : '✎ Edit exercises'}</button>
     </div>
+    <textarea class="note-in" id="sess-note" style="min-height:44px;margin-bottom:10px" placeholder="Notes for this workout — how it felt, anything to flag…">${escapeHtml(s.note || '')}</textarea>`;
+}
+
+function renderStrengthSheet(title) {
+  const s = activeSession;
+  const typ = typicalDur(s.type);
+  openSheet(title + ' · ' + s.date, `
+    ${_sessionHead(s, typ)}
     ${s.exercises.map((ex, xi) => {
       const last = lastWeights(ex.name);
       const tools = exEditMode ? `
@@ -817,18 +876,19 @@ function renderStrengthSheet(title) {
       ? 'Changes here become your new default list for future strength days.'
       : 'Weights pre-fill from your last session. Weaker side sets the load on single-leg work; stop 2 reps shy of failure.'}</p>`);
 }
-function toggleExEdit() { exEditMode = !exEditMode; renderStrengthOrPlyo(); }
+function toggleExEdit() { exEditMode = !exEditMode; _rerenderSession(); }
+function _kindOfActive() { return typeOf(activeSession.type).kind; }
 function moveEx(xi, dir) {
   const a = activeSession.exercises;
   const j = xi + dir; if (j < 0 || j >= a.length) return;
   [a[xi], a[j]] = [a[j], a[xi]];
-  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+  stashSession(); _syncTemplateForKind(); _rerenderSession();
 }
 function removeEx(xi) {
   const ex = activeSession.exercises[xi];
   if (!confirm('Remove "' + ex.name + '" from this workout (and the default list)?')) return;
   activeSession.exercises.splice(xi, 1);
-  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+  stashSession(); _syncTemplateForKind(); _rerenderSession();
 }
 function setCount(xi, dir) {
   const ex = activeSession.exercises[xi];
@@ -836,16 +896,21 @@ function setCount(xi, dir) {
     const proto = ex.sets[ex.sets.length - 1] || { r: 10, w: 0 };
     ex.sets.push({ r: proto.r, w: proto.w, done: false });
   } else if (ex.sets.length > 1) ex.sets.pop();
-  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+  stashSession(); _syncTemplateForKind(); _rerenderSession();
 }
 function addExercise() {
   const name = (prompt('Exercise name:') || '').trim();
   if (!name) return;
-  const last = lastWeights(name);
-  activeSession.exercises.push({ name, done: false,
-    sets: Array.from({ length: 3 }, () => ({ r: last?.r || 10, w: last?.w || 0, done: false })) });
-  stashSession(); syncTemplateFromSession(); renderStrengthOrPlyo();
+  if (_kindOfActive() === 'strength') {
+    const last = lastWeights(name);
+    activeSession.exercises.push({ name, done: false,
+      sets: Array.from({ length: 3 }, () => ({ r: last?.r || 10, w: last?.w || 0, done: false })) });
+  } else {
+    activeSession.exercises.push({ name, done: false, detail: '', note: '', super: null });
+  }
+  stashSession(); _syncTemplateForKind(); _rerenderSession();
 }
+function _syncTemplateForKind() { if (_kindOfActive() === 'strength') syncTemplateFromSession(); else syncExsetTemplateFromSession(); }
 function toggleExOpen(xi) {
   const el = document.getElementById('exsets-' + xi);
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
@@ -855,39 +920,86 @@ function toggleExDone(xi) {
   ex.done = !ex.done;
   if (ex.sets) ex.sets.forEach(s => s.done = ex.done);
   stashSession();
-  renderStrengthOrPlyo();
+  _rerenderSession();
 }
 function toggleSet(xi, si) {
   const ex = activeSession.exercises[xi];
   ex.sets[si].done = !ex.sets[si].done;
   ex.done = ex.sets.every(s => s.done);
   stashSession();
-  renderStrengthOrPlyo(xi);
+  _rerenderSession(xi);
 }
-function renderStrengthOrPlyo(keepOpen) {
+function _rerenderSession(keepOpen) {
   const openIds = [...document.querySelectorAll('.ex-sets')].filter(e => e.style.display !== 'none').map(e => +e.id.split('-')[1]);
-  if (activeSession.exercises[0]?.sets) renderStrengthSheet(SESSION_TYPES[activeSession.type].full + ' · ' + activeSession.date);
-  else renderPlyoSheet(SESSION_TYPES[activeSession.type].full);
+  const note = document.getElementById('sess-note'); if (note) activeSession.note = note.value;
+  const title = typeOf(activeSession.type).full;
+  if (_kindOfActive() === 'strength') renderStrengthSheet(title);
+  else renderExsetSheet(title);
   [...new Set([...openIds, keepOpen])].forEach(i => { const el = document.getElementById('exsets-' + i); if (el) el.style.display = ''; });
   _armClock();
 }
 
-function renderPlyoSheet(title) {
+// Exset sheet — Plyo + any custom type (Pull, Push, ...). Each exercise has a
+// free-text "detail" (24 in, 3 sets / 4x20s — whatever shape fits), an
+// optional note, and an optional superset letter for back-to-back supersets.
+function renderExsetSheet(title) {
   const s = activeSession;
   const typ = typicalDur(s.type);
+  const SUPER_LETTERS = ['A', 'B', 'C', 'D'];
+  let lastSuper = null;
   openSheet(title + ' · ' + s.date, `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</div>
-    ${s.exercises.map((ex, xi) => `
-      <div class="ex${ex.done ? ' done' : ''}">
-        <div class="ex-head" onclick="toggleExDone(${xi})">
-          <span class="chk">✓</span><span class="nm">${escapeHtml(ex.name)}</span>
+    ${_sessionHead(s, typ)}
+    ${s.exercises.map((ex, xi) => {
+      const superIntro = ex.super && ex.super !== lastSuper
+        ? `<div class="super-label" style="border-color:${CUSTOM_COLORS[SUPER_LETTERS.indexOf(ex.super) % CUSTOM_COLORS.length]}">🔗 Superset ${ex.super} — back to back, no rest between</div>` : '';
+      lastSuper = ex.super || null;
+      const tools = exEditMode ? `
+        <span class="ex-tools">
+          <button class="ex-tool" onclick="event.stopPropagation();moveEx(${xi},-1)" ${xi === 0 ? 'disabled' : ''}>↑</button>
+          <button class="ex-tool" onclick="event.stopPropagation();moveEx(${xi},1)" ${xi === s.exercises.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="ex-tool" onclick="event.stopPropagation();cycleSuper(${xi})">🔗${ex.super || ''}</button>
+          <button class="ex-tool danger" onclick="event.stopPropagation();removeEx(${xi})">✕</button>
+        </span>` : '';
+      return `${superIntro}<div class="ex${ex.done ? ' done' : ''}${ex.super ? ' in-super' : ''}" id="ex-${xi}">
+        <div class="ex-head">
+          <span class="chk" onclick="event.stopPropagation();toggleExDone(${xi})">✓</span>
+          <span class="nm">${escapeHtml(ex.name)}</span>
+          ${tools}
         </div>
-      </div>`).join('')}
+        <div class="ex-meta">
+          <button class="badge detailchip" onclick="setExDetail(${xi})">${ex.detail ? escapeHtml(ex.detail) : '+ detail (sets, reps, height…)'}</button>
+          <button class="badge" onclick="setExNoteAt(${xi})">${ex.note ? '📝 ' + escapeHtml(ex.note) : '📝 note'}</button>
+        </div>
+      </div>`;
+    }).join('')}
+    ${exEditMode ? `<button class="btn" style="width:100%;margin-top:4px" onclick="addExercise()">＋ Add exercise</button>` : ''}
     <div class="timer-go" style="margin-top:14px">
       <button class="btn" onclick="closeSheet()">Close</button>
       <button class="btn primary" onclick="finishSession()">Finish workout ✓</button>
     </div>
-    <p class="hint" style="margin-top:10px">Once a week, never more. Any hop asymmetry: note it for the PT, don't push through.</p>`);
+    <p class="hint" style="margin-top:10px">${exEditMode
+      ? 'Tap 🔗 to link exercises into a superset (same letter = alternate back to back). Changes become the default list for this workout type.'
+      : "Tap the detail chip to set sets/reps/height. Any hop or single-side asymmetry: note it, don't push through."}</p>`);
+}
+function setExDetail(xi) {
+  const ex = activeSession.exercises[xi];
+  const v = prompt('Detail for ' + ex.name + ' — e.g. "24 in, 3 sets" or "4 x 20s":', ex.detail || '');
+  if (v == null) return;
+  ex.detail = v.trim();
+  stashSession(); syncExsetTemplateFromSession(); _rerenderSession();
+}
+function setExNoteAt(xi) {
+  const ex = activeSession.exercises[xi];
+  const v = prompt('Note for ' + ex.name + ':', ex.note || '');
+  if (v == null) return;
+  ex.note = v.trim();
+  stashSession(); _rerenderSession();
+}
+function cycleSuper(xi) {
+  const ex = activeSession.exercises[xi];
+  const L = ['A', 'B', 'C', 'D'];
+  ex.super = ex.super ? (L[L.indexOf(ex.super) + 1] || null) : 'A';
+  stashSession(); syncExsetTemplateFromSession(); _rerenderSession();
 }
 
 // Rest days take a comment — how you feel, what's sore, why you skipped.
@@ -948,8 +1060,8 @@ function finishSession() {
 }
 function pickSetVal(xi, si, field) {
   const set = activeSession.exercises[xi].sets[si];
-  if (field === 'w') openDrum('Weight (lb)', rangeVals(0, 400, 2.5), set.w, v => { set.w = v; stashSession(); renderStrengthOrPlyo(xi); });
-  else openDrum('Reps', rangeVals(1, 30, 1), set.r, v => { set.r = v; stashSession(); renderStrengthOrPlyo(xi); });
+  if (field === 'w') openDrum('Weight (lb)', rangeVals(0, 400, 2.5), set.w, v => { set.w = v; stashSession(); _rerenderSession(xi); });
+  else openDrum('Reps', rangeVals(1, 30, 1), set.r, v => { set.r = v; stashSession(); _rerenderSession(xi); });
 }
 
 // ═════════════════════════════ SHEET + DRUM ════════════════════════════════
