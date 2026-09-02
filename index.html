@@ -1257,7 +1257,8 @@ function finishSession() {
 function pickSetVal(xi, si, field) {
   const set = activeSession.exercises[xi].sets[si];
   if (field === 'w') openDrum('Weight (lb)', rangeVals(0, 400, 2.5), set.w, v => { set.w = v; stashSession(); _rerenderSession(xi); });
-  else openDrum('Reps', rangeVals(1, 30, 1), set.r, v => { set.r = v; stashSession(); _rerenderSession(xi); });
+  // Up to 100 — bodyweight sets (push-ups) blow past a 30-rep ceiling.
+  else openDrum('Reps', rangeVals(1, 100, 1), set.r, v => { set.r = v; stashSession(); _rerenderSession(xi); });
 }
 
 // ═════════════════════════════ SHEET + DRUM ════════════════════════════════
