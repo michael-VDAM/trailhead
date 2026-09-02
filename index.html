@@ -122,6 +122,12 @@
     .chip { background: var(--panel3); border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11.5px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
     .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
     .note-like { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 13px; padding: 9px 12px; font-family: inherit; outline: none; }
+    /* iOS Safari auto-zooms on focus for ANY field under 16px, which then leaves
+       the Add button off-screen. 16px is the exact threshold — don't lower it. */
+    @media (max-width: 820px) {
+      input, textarea, select, .note-like, .note-in { font-size: 16px !important; }
+      .g-qty-in { width: 82px; flex: 0 0 82px; }
+    }
     .note-like:focus { border-color: var(--accent); }
     .group-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 16px 0 7px; }
     button.group-title.collapsible { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; width: 100%; text-align: left; padding: 4px 0; }

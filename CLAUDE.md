@@ -67,7 +67,8 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 3. `node --check` the extracted script after big edits.
 4. Fetch before push (Michael edits via GitHub web sometimes).
 5. Simplicity wins; commit one recommendation; plain English.
-6. **Lively colors** — Michael explicitly rejected subdued/earthy. Alpine-sunrise palette: navy `#171e33` + vivid orange/teal/green/purple. Keep new UI punchy in BOTH themes.
+6. **Never set a form field under 16px on mobile** — iOS Safari auto-zooms on focus, which pushed the grocery Add button off-screen. A `@media (max-width: 820px)` block forces `input/textarea/select` to 16px; don't override it downward.
+7. **Lively colors** — Michael explicitly rejected subdued/earthy. Alpine-sunrise palette: navy `#171e33` + vivid orange/teal/green/purple. Keep new UI punchy in BOTH themes.
 
 ## Deploy
 ```bash
