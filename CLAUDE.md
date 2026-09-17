@@ -61,6 +61,16 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - Seeded with `DEFAULT_TASKS` (water filter 6mo, HVAC 3mo, oil change 6mo, cat bowl weekly, plants weekly). Shared collection `tasks`.
 - `addInterval()` is calendar-correct (month/year land on the same day-of-month) — do NOT switch it to day arithmetic.
 
+## Sync: deletes need tombstones (fixed 2026-09-17 — don't regress)
+Array collections used to merge by **union**, which cannot express a deletion. A removed item was indistinguishable from one the other device hadn't seen yet, so it came back — and the device that still held it pushed it to everyone. Michael hit this on the grocery list: items kept reloading, and a desktop delete never stuck on the phone.
+
+- **Deleting writes a tombstone**, never a `filter()`. Use `tombstone(arr, id)` — it strips the item to `{id, ts, del}` so only identity and timing travel.
+- **Every mutation stamps `ts`** via `touch(it)`. Miss one and a stale copy on the other device outranks the edit and silently reverts it.
+- **Every read filters** with `live(arr)`. A new view that reads the raw array will render tombstones as blank rows.
+- The merge in `pullAll()` is **per-item last-write-wins**, not a union. `sweepTombstones()` drops them after `TOMBSTONE_DAYS` (30).
+- Applies to all `kind:'array'` collections: `grocery`, `tasks`, `recipes`, `log`, `ghistory`.
+- **`kind:'map'` (hikes/eats) still has the old problem** — `{...local, ...cloud}` means removing a key resurrects it. Not hit yet because those are only ever set, never unset.
+
 ## Conventions (inherited from Bright Cuts — don't break)
 1. localStorage keys versioned (`trailhead-plan-v1`, `trailhead-log-v1`); never rename without migration.
 2. Sync failures must be VISIBLE (⚠ button state), never console-only.

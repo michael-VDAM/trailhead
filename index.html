@@ -696,6 +696,36 @@ function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan))
 function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
 
 // ═════════════════════════════ HELPERS ═════════════════════════════════════
+// ═══════════════════ DELETES THAT SURVIVE A SYNC ═══════════════════════════
+// Shared array collections used to merge by UNION, which cannot express a
+// deletion: a removed item looks exactly like one the other device hasn't seen
+// yet, so it came straight back — and the device that still held it pushed it
+// to everyone else. Michael hit this deleting groceries: they kept reloading,
+// and a delete on the desktop never stuck on the phone.
+//
+// Deleting now writes a TOMBSTONE that travels like any other edit. `ts` is a
+// per-item modified stamp so the merge can pick a winner instead of unioning;
+// the UI filters tombstones out, and they're swept after TOMBSTONE_DAYS.
+const TOMBSTONE_DAYS = 30;
+const live = arr => (arr || []).filter(it => it && !it.del);
+function touch(it) { if (it) it.ts = Date.now(); return it; }
+function tombstone(arr, id, key = 'id') {
+  const it = (arr || []).find(x => x && x[key] === id);
+  if (!it || it.del) return false;
+  it.del = it.ts = Date.now();
+  // Keep the tombstone small — only identity and timing have to travel.
+  for (const k of Object.keys(it)) if (k !== key && k !== 'del' && k !== 'ts') delete it[k];
+  return true;
+}
+// Drop tombstones nobody needs any more. Returns true if anything was removed,
+// so the caller knows the pruned list is worth pushing.
+function sweepTombstones(arr) {
+  const cutoff = Date.now() - TOMBSTONE_DAYS * 864e5;
+  let n = arr.length;
+  for (let i = arr.length - 1; i >= 0; i--) if (arr[i]?.del && arr[i].del < cutoff) arr.splice(i, 1);
+  return arr.length !== n;
+}
+
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function showToast(msg) {
   document.querySelector('.toast')?.remove();
@@ -1963,7 +1993,8 @@ function dueColor(t) {
   return 'var(--ride)';
 }
 function doneTask(id) {
-  const t = tasks.find(x => x.id === id); if (!t) return;
+  const t = live(tasks).find(x => x.id === id); if (!t) return;
+  touch(t);
   const today = todayIso();
   t.hist = (t.hist || []).concat(today).slice(-24);
   t.last = today;
@@ -1972,13 +2003,13 @@ function doneTask(id) {
   showToast('✓ Done — next up ' + t.next);
 }
 function deleteTask(id) {
-  const t = tasks.find(x => x.id === id); if (!t) return;
+  const t = live(tasks).find(x => x.id === id); if (!t) return;
   if (!confirm('Delete "' + t.name + '"?')) return;
-  tasks = tasks.filter(x => x.id !== id);
+  tombstone(tasks, id);
   saveTasks(); closeSheet(); renderMaint();
 }
 function editTask(id) {
-  const t = id ? tasks.find(x => x.id === id) : null;
+  const t = id ? live(tasks).find(x => x.id === id) : null;
   openSheet(t ? 'Edit task' : 'New task', `
     <input class="note-like" id="tk-name" placeholder="What needs doing — e.g. Change HVAC filters" value="${t ? escapeHtml(t.name) : ''}" style="margin-bottom:8px">
     <div class="g-add" style="margin-bottom:8px">
@@ -2011,9 +2042,9 @@ function saveTaskFromSheet(id) {
   const next = (document.getElementById('tk-next')?.value || '').trim() || todayIso();
   if (!name) { showToast('Needs a name'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(next)) { showToast('Date must be YYYY-MM-DD'); return; }
-  const existing = id ? tasks.find(x => x.id === id) : null;
-  if (existing) Object.assign(existing, { name, every, unit, who, next, cat: window.__tkCat || 'Home' });
-  else tasks.push({ id: 't' + Date.now() + Math.random().toString(36).slice(2, 6), name, cat: window.__tkCat || 'Home', every, unit, who, next, last: null, note: '', hist: [] });
+  const existing = id ? live(tasks).find(x => x.id === id) : null;
+  if (existing) touch(Object.assign(existing, { name, every, unit, who, next, cat: window.__tkCat || 'Home' }));
+  else tasks.push(touch({ id: 't' + Date.now() + Math.random().toString(36).slice(2, 6), name, cat: window.__tkCat || 'Home', every, unit, who, next, last: null, note: '', hist: [] }));
   saveTasks(); closeSheet(); renderMaint();
 }
 
@@ -2021,9 +2052,9 @@ function renderMaint() {
   const views = [['list', '☰ List'], ['cal', '📅 Calendar']];
   const vb = document.getElementById('maint-views');
   if (vb) vb.innerHTML = views.map(([k, l]) => `<button class="chip${maintView === k ? ' on' : ''}" onclick="maintView='${k}';renderMaint()">${l}</button>`).join('');
-  const overdue = tasks.filter(t => daysUntil(t.next) < 0).length;
+  const overdue = live(tasks).filter(t => daysUntil(t.next) < 0).length;
   const cnt = document.getElementById('maint-count');
-  if (cnt) cnt.textContent = overdue ? overdue + ' overdue' : (tasks.length ? 'all caught up 🎉' : '');
+  if (cnt) cnt.textContent = overdue ? overdue + ' overdue' : (live(tasks).length ? 'all caught up 🎉' : '');
   if (maintView === 'cal') renderMaintCal(); else renderMaintList();
 }
 function taskRow(t) {
@@ -2040,7 +2071,7 @@ function taskRow(t) {
 }
 function renderMaintList() {
   const body = document.getElementById('maint-body'); if (!body) return;
-  if (!tasks.length) { body.innerHTML = `<div class="note-empty" style="padding:26px;text-align:center;color:var(--muted)">Nothing tracked yet — hit ＋ Add.</div>`; return; }
+  if (!live(tasks).length) { body.innerHTML = `<div class="note-empty" style="padding:26px;text-align:center;color:var(--muted)">Nothing tracked yet — hit ＋ Add.</div>`; return; }
   const buckets = [
     ['Overdue', t => daysUntil(t.next) < 0],
     ['Due now', t => daysUntil(t.next) >= 0 && daysUntil(t.next) <= 2],
@@ -2048,7 +2079,7 @@ function renderMaintList() {
     ['Later', t => daysUntil(t.next) > 31],
   ];
   body.innerHTML = buckets.map(([label, fn]) => {
-    const rows = tasks.filter(fn).sort((a, b) => a.next.localeCompare(b.next));
+    const rows = live(tasks).filter(fn).sort((a, b) => a.next.localeCompare(b.next));
     if (!rows.length) return '';
     return `<div class="group-title">${label} <span class="gcount">${rows.length}</span></div>` + rows.map(taskRow).join('');
   }).join('');
@@ -2061,7 +2092,7 @@ function renderMaintCal() {
   const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   // Project each task forward through this month so recurring chores show every hit.
   const byDay = {};
-  for (const t of tasks) {
+  for (const t of live(tasks)) {
     let cur = t.next;
     for (let guard = 0; guard < 60; guard++) {
       const d = new Date(cur + 'T12:00:00');
@@ -2203,7 +2234,7 @@ const G_KNOWN = {
 // (e.g. hamburger meat) now that the known-items map is smarter.
 function migrateGrocery(items) {
   let changed = false;
-  for (const g of items) {
+  for (const g of live(items)) {
     if (G_MIGRATE[g.cat]) { g.cat = G_MIGRATE[g.cat]; changed = true; }
     if (!G_CATS.includes(g.cat)) { g.cat = 'Misc'; changed = true; }
     if (g.cat === 'Misc') {
@@ -2225,17 +2256,17 @@ function migrateGrocery(items) {
 // Two shops' worth of ⭐ staples stacked up duplicate Bananas/Eggs/Bacon etc.
 // Keep the LAST copy of each name (newest state wins), drop the rest.
 function dedupeGrocery(items) {
-  const seen = new Map();
-  for (const g of items) seen.set(g.name.toLowerCase(), g);
-  if (seen.size === items.length) return false;
-  items.length = 0; items.push(...seen.values());
+  const seen = new Map(), dead = items.filter(g => g && g.del);
+  for (const g of live(items)) seen.set(g.name.toLowerCase(), g);
+  if (seen.size + dead.length === items.length) return false;
+  items.length = 0; items.push(...seen.values(), ...dead);   // tombstones must survive the sweep
   return true;
 }
 // First run: everything already on the list becomes autocomplete vocabulary.
 function seedHistoryFromList() {
-  if (gHistory.length || !grocery.length) return false;
+  if (gHistory.length || !live(grocery).length) return false;
   const seen = new Map();
-  for (const g of grocery) {
+  for (const g of live(grocery)) {
     const k = g.name.toLowerCase();
     seen.set(k, { name: g.name, cat: g.cat || 'Misc', n: (seen.get(k)?.n || 0) + 1 });
   }
@@ -2354,15 +2385,16 @@ function parseItem(text) {
   return { qty: '', name: t };
 }
 function pushGroceryItem(name, qty, cat) {
-  const existing = grocery.find(g => g.name.toLowerCase() === name.toLowerCase());
+  const existing = live(grocery).find(g => g.name.toLowerCase() === name.toLowerCase());
   if (existing) {
     // Already there — revive it rather than creating a second copy. This is what
     // let ⭐ staples stack up duplicate Bananas/Eggs/Bacon over two shops.
     if (qty) existing.qty = qty;
+    touch(existing);
     if (existing.got) { existing.got = false; return true; }
     return false;
   }
-  grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, qty: qty || '', cat: cat || guessCat(name), got: false });
+  grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, qty: qty || '', cat: cat || guessCat(name), got: false }));
   return true;
 }
 function addGrocery() {
@@ -2382,17 +2414,17 @@ function addGrocery() {
   inp.focus();
 }
 function setQty(id) {
-  const g = grocery.find(g => g.id === id); if (!g) return;
+  const g = live(grocery).find(g => g.id === id); if (!g) return;
   const v = prompt('Amount for ' + g.name + ' (empty to clear):', g.qty || '');
   if (v == null) return;
-  g.qty = v.trim();
+  g.qty = v.trim(); touch(g);
   saveGrocery(); renderGrocery();
 }
 function addStaples() {
   let added = 0;
   for (const s of gStaples()) {
-    if (grocery.some(g => !g.got && g.name.toLowerCase() === s.name.toLowerCase())) continue;
-    grocery.push({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6) + added, name: s.name, cat: s.cat, got: false });
+    if (live(grocery).some(g => !g.got && g.name.toLowerCase() === s.name.toLowerCase())) continue;
+    grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6) + added, name: s.name, cat: s.cat, got: false }));
     added++;
   }
   saveGrocery(); renderGrocery();
@@ -2407,25 +2439,27 @@ function editStaples() {
   showToast('Staples updated');
 }
 function toggleGrocery(id) {
-  const g = grocery.find(g => g.id === id); if (!g) return;
-  g.got = !g.got;
+  const g = live(grocery).find(g => g.id === id); if (!g) return;
+  g.got = !g.got; touch(g);
   saveGrocery(); renderGrocery();
 }
-function removeGrocery(id) { grocery = grocery.filter(g => g.id !== id); saveGrocery(); renderGrocery(); }
+function removeGrocery(id) { if (tombstone(grocery, id)) { saveGrocery(); renderGrocery(); } }
 function clearGotten() {
-  const n = grocery.filter(g => g.got).length;
+  const gotten = live(grocery).filter(g => g.got);
+  const n = gotten.length;
   if (!n) return;
-  grocery = grocery.filter(g => !g.got);
+  for (const g of gotten) tombstone(grocery, g.id);
   saveGrocery(); renderGrocery();
   showToast(`${n} item${n>1?'s':''} cleared 🛒`);
 }
 function renderGrocery() {
   document.getElementById('g-cats').innerHTML = G_CATS.map(c =>
     `<button class="chip${gCat===c?' on':''}" onclick="gCat='${c}';renderGrocery()">${G_EMOJI[c]} ${c}</button>`).join('');
-  const open = grocery.filter(g => !g.got).length;
+  const shown = live(grocery);
+  const open = shown.filter(g => !g.got).length;
   document.getElementById('g-count').textContent = open ? `${open} to grab` : 'List clear 🎉';
   document.getElementById('g-list').innerHTML = G_CATS.map(cat => {
-    const items = grocery.filter(g => g.cat === cat);
+    const items = shown.filter(g => g.cat === cat);
     if (!items.length) return '';
     items.sort((a, b) => (a.got?1:0) - (b.got?1:0));   // checked sink within category
     return `<div class="group-title">${G_EMOJI[cat]} ${cat}</div>` + items.map(g => `
@@ -2451,7 +2485,7 @@ function saveRecipes() {
 function renderRecipes() {
   const el = document.getElementById('g-recipes'); if (!el) return;
   el.innerHTML = `<div class="group-title">🍳 Recipes</div>
-    ${recipes.map(r => `
+    ${live(recipes).map(r => `
       <div class="g-item" style="cursor:default">
         <button class="btn primary" style="padding:5px 12px" onclick="addRecipeToList('${r.id}')">＋ Add</button>
         <span class="g-nm">${escapeHtml(r.name)} <span class="g-qty">${r.items.length} items</span></span>
@@ -2464,14 +2498,14 @@ function renderRecipes() {
     </div>`;
 }
 function addRecipeToList(id) {
-  const r = recipes.find(r => r.id === id); if (!r) return;
+  const r = live(recipes).find(r => r.id === id); if (!r) return;
   let added = 0;
   for (const it of r.items) if (pushGroceryItem(it.name, it.qty, it.cat)) added++;
   saveGrocery(); renderGrocery();
   showToast(added ? `🍳 ${r.name}: ${added} item${added>1?'s':''} added` : `${r.name} is already all on the list`);
 }
 function editRecipe(id) {
-  const r = id ? recipes.find(r => r.id === id) : null;
+  const r = id ? live(recipes).find(r => r.id === id) : null;
   const lines = r ? r.items.map(it => (it.qty ? it.qty + ' ' : '') + it.name).join('\n') : '';
   openSheet(r ? 'Edit recipe' : 'New recipe', `
     <input class="note-like" id="rcp-name" placeholder="Recipe name — e.g. Taco Night" value="${r ? escapeHtml(r.name) : ''}" style="margin-bottom:8px">
@@ -2487,25 +2521,25 @@ function saveRecipeFromSheet(id) {
   const lines = (document.getElementById('rcp-items')?.value || '').split('\n').map(l => l.trim()).filter(Boolean);
   if (!name || !lines.length) { showToast('Needs a name and at least one item'); return; }
   const items = lines.map(l => { const p = parseItem(l); return { name: p.name, qty: p.qty, cat: guessCatStrict(p.name) || 'Misc' }; });
-  const existing = id ? recipes.find(r => r.id === id) : null;
-  if (existing) { existing.name = name; existing.items = items; }
-  else recipes.push({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name, items });
+  const existing = id ? live(recipes).find(r => r.id === id) : null;
+  if (existing) { existing.name = name; existing.items = items; touch(existing); }
+  else recipes.push(touch({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name, items }));
   saveRecipes(); closeSheet(); renderRecipes();
   showToast('Recipe saved 🍳');
 }
 function deleteRecipe(id) {
-  const r = recipes.find(r => r.id === id); if (!r) return;
+  const r = live(recipes).find(r => r.id === id); if (!r) return;
   if (!confirm('Delete recipe "' + r.name + '"?')) return;
-  recipes = recipes.filter(r => r.id !== id);
+  tombstone(recipes, id);
   saveRecipes(); renderRecipes();
 }
 function saveListAsRecipe() {
-  const open = grocery.filter(g => !g.got);
+  const open = live(grocery).filter(g => !g.got);
   if (!open.length) { showToast('List is empty — add items first'); return; }
   const name = (prompt('Name this recipe (saves the ' + open.length + ' unchecked items):') || '').trim();
   if (!name) return;
-  recipes.push({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name,
-    items: open.map(g => ({ name: g.name, qty: g.qty || '', cat: g.cat })) });
+  recipes.push(touch({ id: 'r' + Date.now() + Math.random().toString(36).slice(2,6), name,
+    items: open.map(g => ({ name: g.name, qty: g.qty || '', cat: g.cat })) }));
   saveRecipes(); renderRecipes();
   showToast('Saved 🍳 — one tap re-adds it all next time');
 }
@@ -2627,12 +2661,24 @@ async function pullAll() {
       const cloud = byColl[name];
       if (coll.kind === 'array') {
         const localArr = coll.get() || [], cloudArr = Array.isArray(cloud) ? cloud : [];
+        // Per-item last-write-wins. A blind union would resurrect anything the
+        // other device deleted, and the deletion would never stick anywhere.
         const m = new Map();
         for (const it of localArr) if (it?.[coll.key] != null) m.set(it[coll.key], it);
-        for (const it of cloudArr) if (it?.[coll.key] != null) m.set(it[coll.key], it);
-        const cloudKeys = new Set(cloudArr.map(it => it?.[coll.key]));
-        if (localArr.some(it => it && !cloudKeys.has(it[coll.key]))) toPush.push(name);
-        coll.set([...m.values()]);
+        for (const it of cloudArr) {
+          if (it?.[coll.key] == null) continue;
+          const mine = m.get(it[coll.key]);
+          if (!mine || (it.ts || 0) >= (mine.ts || 0)) m.set(it[coll.key], it);
+        }
+        const merged = [...m.values()];
+        const swept = sweepTombstones(merged);
+        // Push when we hold anything the cloud lacks or has an older copy of.
+        const theirs = new Map(cloudArr.map(it => [it?.[coll.key], it]));
+        if (swept || merged.some(it => {
+          const t = theirs.get(it[coll.key]);
+          return !t || (it.ts || 0) > (t.ts || 0);
+        })) toPush.push(name);
+        coll.set(merged);
       } else if (coll.kind === 'map') {
         const localObj = coll.get() || {}, cloudObj = (cloud && typeof cloud === 'object') ? cloud : {};
         if (Object.keys(localObj).some(k => !(k in cloudObj))) toPush.push(name);
