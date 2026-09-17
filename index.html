@@ -134,6 +134,15 @@
     .g-store-row { display: flex; gap: 6px; margin: 10px 0 4px; }
     .chip.store { font-size: 13px; padding: 8px 16px; color: var(--text); }
     .chip.store.on { background: var(--accent); border-color: var(--accent); color: #0d1220; }
+    button.group-title.aisle-head { display: flex; align-items: center; gap: 8px; width: 100%;
+        background: none; border: none; cursor: pointer; text-align: left; padding: 4px 0; font: inherit;
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px;
+        color: var(--muted); margin: 16px 0 7px; }
+    .aisle-tag { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px;
+        padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+    .aisle-tag.empty { background: none; border: 1px dashed var(--border); color: var(--muted2); opacity: 0; }
+    button.group-title.aisle-head:hover .aisle-tag.empty { opacity: 1; }
+    @media (hover: none) { .aisle-tag.empty { opacity: 1; } }
     .grp-n { display: inline-block; margin-left: 5px; padding: 1px 6px; border-radius: 999px;
              background: var(--accent-soft); color: var(--accent); font-size: 10px; letter-spacing: 0; }
     .group-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 16px 0 7px; }
@@ -691,6 +700,7 @@ function loadLocal() {
   try { staples = JSON.parse(localStorage.getItem('trailhead-staples-v1') || 'null'); } catch { staples = null; }
   try { recipes = JSON.parse(localStorage.getItem('trailhead-recipes-v1') || '[]'); if (!Array.isArray(recipes)) recipes = []; } catch { recipes = []; }
   try { gHistory = JSON.parse(localStorage.getItem('trailhead-ghistory-v1') || '[]'); if (!Array.isArray(gHistory)) gHistory = []; } catch { gHistory = []; }
+  try { aisles = JSON.parse(localStorage.getItem('trailhead-aisles-v1') || '{}') || {}; } catch { aisles = {}; }
   try { tasks = JSON.parse(localStorage.getItem('trailhead-tasks-v1') || 'null'); } catch { tasks = null; }
   if (!Array.isArray(tasks)) seedTasks();
   // TJ's store-rearrangement migration (also fixes items mis-filed under Misc).
@@ -2258,7 +2268,32 @@ const STORES = {
   kroger: { name: 'Kroger',       cats: K_CATS, emoji: K_EMOJI, section: krogerSection,
             note: "Kroger, 5705 Charlotte Pike — perimeter first (produce → bakery → deli → meat → dairy), then the center aisles, frozen last on the way to the registers. Departments are chain-wide; aisle numbers differ store to store, so check the Kroger app if you need the exact number." },
 };
-let gStore = localStorage.getItem('trailhead-gstore-v1') || 'tj';   // a per-device VIEW, not shared
+let gStore = localStorage.getItem('trailhead-gstore-v1') || 'tj';   // a per-device choice, not shared
+// Each store keeps its OWN list — a Kroger recipe run shouldn't clutter the
+// Trader Joe's staples run. `store` is stamped on every item; anything saved
+// before store views existed is Trader Joe's.
+const storeOf = g => g.store || 'tj';
+const listItems = (s = gStore) => live(grocery).filter(g => storeOf(g) === s);
+// Kroger publishes departments, not aisle numbers — those sit behind a signed-in
+// session with a store selected, so there's nothing to look up. They ARE stable
+// per store, so the list holds whatever Michael types in and syncs it: tap a
+// section header once in the store, and it's labelled from then on.
+let aisles = {};   // { kroger: { Produce: '1', Spices: '7' } } — SHARED
+function saveAisles() {
+  try { localStorage.setItem('trailhead-aisles-v1', JSON.stringify(aisles)); } catch {}
+  cloudPush('aisles');
+}
+function aisleOf(cat) { return (aisles[gStore] || {})[cat] || ''; }
+function setAisle(cat) {
+  const cur = aisleOf(cat);
+  const v = prompt(`Aisle for ${cat} at ${STORES[gStore].name}? (empty to clear)`, cur);
+  if (v == null) return;
+  aisles[gStore] = aisles[gStore] || {};
+  const t = v.trim();
+  if (t) aisles[gStore][cat] = t; else delete aisles[gStore][cat];
+  saveAisles(); renderGrocery();
+}
+
 function setStore(s) {
   gStore = STORES[s] ? s : 'tj';
   try { localStorage.setItem('trailhead-gstore-v1', gStore); } catch {}
@@ -2329,7 +2364,7 @@ function migrateGrocery(items) {
 // Keep the LAST copy of each name (newest state wins), drop the rest.
 function dedupeGrocery(items) {
   const seen = new Map(), dead = items.filter(g => g && g.del);
-  for (const g of live(items)) seen.set(g.name.toLowerCase(), g);
+  for (const g of live(items)) seen.set(storeOf(g) + '|' + g.name.toLowerCase(), g);
   if (seen.size + dead.length === items.length) return false;
   items.length = 0; items.push(...seen.values(), ...dead);   // tombstones must survive the sweep
   return true;
@@ -2457,7 +2492,7 @@ function parseItem(text) {
   return { qty: '', name: t };
 }
 function pushGroceryItem(name, qty, cat) {
-  const existing = live(grocery).find(g => g.name.toLowerCase() === name.toLowerCase());
+  const existing = listItems().find(g => g.name.toLowerCase() === name.toLowerCase());
   if (existing) {
     // Already there — revive it rather than creating a second copy. This is what
     // let ⭐ staples stack up duplicate Bananas/Eggs/Bacon over two shops.
@@ -2466,7 +2501,7 @@ function pushGroceryItem(name, qty, cat) {
     if (existing.got) { existing.got = false; return true; }
     return false;
   }
-  grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, qty: qty || '', cat: cat || guessCat(name), got: false }));
+  grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6), name, qty: qty || '', cat: cat || guessCat(name), got: false, store: gStore }));
   return true;
 }
 function addGrocery() {
@@ -2495,8 +2530,8 @@ function setQty(id) {
 function addStaples() {
   let added = 0;
   for (const s of gStaples()) {
-    if (live(grocery).some(g => !g.got && g.name.toLowerCase() === s.name.toLowerCase())) continue;
-    grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6) + added, name: s.name, cat: s.cat, got: false }));
+    if (listItems().some(g => !g.got && g.name.toLowerCase() === s.name.toLowerCase())) continue;
+    grocery.push(touch({ id: 'g' + Date.now() + Math.random().toString(36).slice(2,6) + added, name: s.name, cat: s.cat, got: false, store: gStore }));
     added++;
   }
   saveGrocery(); renderGrocery();
@@ -2511,13 +2546,13 @@ function editStaples() {
   showToast('Staples updated');
 }
 function toggleGrocery(id) {
-  const g = live(grocery).find(g => g.id === id); if (!g) return;
+  const g = live(grocery).find(g => g.id === id); if (!g) return;   // by id — store-agnostic
   g.got = !g.got; touch(g);
   saveGrocery(); renderGrocery();
 }
 function removeGrocery(id) { if (tombstone(grocery, id)) { saveGrocery(); renderGrocery(); } }
 function clearGotten() {
-  const gotten = live(grocery).filter(g => g.got);
+  const gotten = listItems().filter(g => g.got);
   const n = gotten.length;
   if (!n) return;
   for (const g of gotten) tombstone(grocery, g.id);
@@ -2526,8 +2561,10 @@ function clearGotten() {
 }
 function renderGrocery() {
   const store = STORES[gStore] || STORES.tj;
-  document.getElementById('g-stores').innerHTML = Object.entries(STORES).map(([k, s]) =>
-    `<button class="chip store${gStore===k?' on':''}" onclick="setStore('${k}')">${s.name}</button>`).join('');
+  document.getElementById('g-stores').innerHTML = Object.entries(STORES).map(([k, s]) => {
+    const n = listItems(k).filter(g => !g.got).length;
+    return `<button class="chip store${gStore===k?' on':''}" onclick="setStore('${k}')">${s.name}${n?` <span class="grp-n">${n}</span>`:''}</button>`;
+  }).join('');
   // The add-category chips name TJ's aisles, which is what an item actually stores.
   // In the Kroger view the section is derived from the name, so they'd only mislead.
   const catRow = document.getElementById('g-cats');
@@ -2536,7 +2573,7 @@ function renderGrocery() {
     `<button class="chip${gCat===c?' on':''}" onclick="gCat='${c}';renderGrocery()">${G_EMOJI[c]} ${c}</button>`).join('');
   const note = document.getElementById('g-note');
   if (note) note.textContent = store.note + ' Shared — you both see the same list live.';
-  const shown = live(grocery);
+  const shown = listItems();
   const open = shown.filter(g => !g.got).length;
   document.getElementById('g-count').textContent = open ? `${open} to grab` : 'List clear 🎉';
   document.getElementById('g-list').innerHTML = store.cats.map(cat => {
@@ -2544,7 +2581,12 @@ function renderGrocery() {
     if (!items.length) return '';
     items.sort((a, b) => (a.got?1:0) - (b.got?1:0));   // checked sink within category
     const left = items.filter(g => !g.got).length;
-    return `<div class="group-title">${store.emoji[cat]} ${cat}${left ? ` <span class="grp-n">${left}</span>` : ''}</div>` + items.map(g => `
+    const ais = aisleOf(cat);
+    return `<button class="group-title aisle-head" onclick="setAisle('${cat.replace(/'/g, "\\'")}')">
+        <span>${store.emoji[cat]} ${cat}</span>
+        ${left ? `<span class="grp-n">${left}</span>` : ''}
+        <span class="aisle-tag${ais ? '' : ' empty'}">${ais ? escapeHtml(ais) : '+ aisle'}</span>
+      </button>` + items.map(g => `
       <div class="g-item${g.got?' got':''}" onclick="toggleGrocery('${g.id}')">
         <span class="g-chk">✓</span>
         <span class="g-nm">${escapeHtml(g.name)}${g.qty?` <span class="g-qty">${escapeHtml(g.qty)}</span>`:''}</span>
@@ -2616,7 +2658,7 @@ function deleteRecipe(id) {
   saveRecipes(); renderRecipes();
 }
 function saveListAsRecipe() {
-  const open = live(grocery).filter(g => !g.got);
+  const open = listItems().filter(g => !g.got);
   if (!open.length) { showToast('List is empty — add items first'); return; }
   const name = (prompt('Name this recipe (saves the ' + open.length + ' unchecked items):') || '').trim();
   if (!name) return;
@@ -2662,6 +2704,9 @@ const CLOUD_COLLECTIONS = {
   recipes: { owner: 'shared', kind: 'array', key: 'id',
     get: () => recipes,
     set: v => { if (Array.isArray(v)) { recipes = v; try { localStorage.setItem('trailhead-recipes-v1', JSON.stringify(v)); } catch {} renderRecipes(); } } },
+  aisles: { owner: 'shared', kind: 'object',
+    get: () => aisles,
+    set: v => { if (v && typeof v === 'object') { aisles = v; try { localStorage.setItem('trailhead-aisles-v1', JSON.stringify(v)); } catch {} renderGrocery(); } } },
   staples: { owner: 'shared', kind: 'object',
     get: () => staples,
     set: v => { if (Array.isArray(v)) { staples = v; try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(v)); } catch {} } } },

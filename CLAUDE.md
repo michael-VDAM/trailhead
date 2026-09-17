@@ -47,11 +47,14 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - **Amounts**: separate Qty input in the same add row (wins), plus parsing of BOTH leading ("2 lb chicken") and trailing ("Chicken sausage, 1 lbs") forms — Michael types both. `migrateGrocery` retro-splits amounts stranded in old item names.
 - `pushGroceryItem` REVIVES a checked item instead of adding a second copy (⭐ staples used to stack duplicate Bananas/Eggs/Bacon); `dedupeGrocery` collapses the ones already stored. **Recipes** (🍳): named ingredient lists, ＋Add dumps all items with amounts (dups skipped, amounts updated); "Save current list as recipe" snapshots the unchecked list.
 
-## Store views (added 2026-09-17)
-The list is stored ONCE; a **store** only changes the order you walk it in. `STORES` holds `{name, cats, emoji, section, note}`; `gStore` is a **per-device view preference** in localStorage — deliberately NOT synced, since Michael can be at Kroger while Rachel's at TJ's.
+## Store lists (added 2026-09-17)
+Each store is its **own list**, not a re-ordering of one shared list — a Kroger recipe run must not clutter the Trader Joe's staples run. Every item carries `store` (`'tj'` default for anything saved before this existed); `listItems(store)` is the accessor and everything user-facing goes through it: render, counts, add, dup-check, ⭐ staples, Clear checked, Save-as-recipe. `STORES` holds `{name, cats, emoji, section, note}`; `gStore` is **per-device** in localStorage — deliberately NOT synced, since Michael can be at Kroger while Rachel's at TJ's. The store chips show each list's open count so you can see the other list without switching.
 - An item's `cat` stays the **Trader Joe's** category (canonical storage). The Kroger section is derived from the item **name** via `K_KNOWN` (longest-substring match, so "tomato paste" beats "tomato" and "rotisserie chicken" doesn't drag "chicken thighs" into the deli), falling back to `K_FROM_TJ`. The two stores group differently — TJ shelves bacon with dairy — so a shared category list would be wrong for both.
 - The add-category chips are TJ's aisles, so they're **hidden in the Kroger view** rather than mislabeling what an item stores.
 - **Kroger aisle NUMBERS are deliberately absent.** Departments are chain-wide and stable; numbers vary store to store and aren't reliably published. Don't invent them — if Michael supplies real ones for 5705 Charlotte Pike, add them as data, not guesses.
+
+### Aisle numbers
+**They cannot be looked up.** Kroger publishes departments per store but aisle numbers sit behind a signed-in session with a store selected — the public product page has none, and we don't log into Michael's account. They ARE stable per store, so `aisles` (`{ kroger: { Produce: '1' } }`, shared collection) holds whatever he types: tap a section header to set it. Don't ever fill these in by guessing.
 
 ## Timers
 - Repeat beeper: one interval, beeps (Web Audio double-beep) every cycle until stopped. ▶30s / ▶60s quick-starts.
