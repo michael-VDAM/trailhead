@@ -129,6 +129,13 @@
       .g-qty-in { width: 82px; flex: 0 0 82px; }
     }
     .note-like:focus { border-color: var(--accent); }
+    /* Store switcher — which order you walk the same list in. Bigger than the
+       category chips because it's the mode you're in, not a filter. */
+    .g-store-row { display: flex; gap: 6px; margin: 10px 0 4px; }
+    .chip.store { font-size: 13px; padding: 8px 16px; color: var(--text); }
+    .chip.store.on { background: var(--accent); border-color: var(--accent); color: #0d1220; }
+    .grp-n { display: inline-block; margin-left: 5px; padding: 1px 6px; border-radius: 999px;
+             background: var(--accent-soft); color: var(--accent); font-size: 10px; letter-spacing: 0; }
     .group-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); margin: 16px 0 7px; }
     button.group-title.collapsible { display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; width: 100%; text-align: left; padding: 4px 0; }
     .group-title .tri { color: var(--accent); font-size: 11px; }
@@ -487,6 +494,7 @@
              onkeydown="if(event.key==='Enter')addGrocery()">
       <button class="btn primary" onclick="addGrocery()">Add</button>
     </div>
+    <div class="g-store-row" id="g-stores"></div>
     <div class="g-cat-row" id="g-cats"></div>
     <div class="g-actions">
       <button class="btn" onclick="addStaples()">⭐ Add staples</button>
@@ -495,7 +503,7 @@
     </div>
     <div id="g-recipes"></div>
     <div id="g-list"></div>
-    <p class="hint" style="margin-top:8px">Sorted the way you walk Trader Joe's: fridge veggies → bread/nuts → fruit → room-temp veggies → meat → chips → dairy (bacon's here!) → misc → alcohol. Shared — you both see the same list live.</p>
+    <p class="hint" style="margin-top:8px" id="g-note"></p>
   </div>
 
   <!-- ═══════════ HOUSE / MAINTENANCE ═══════════ -->
@@ -2192,6 +2200,70 @@ const G_CATS = ['Fridge Veggies', 'Bread/Nuts', 'Fruit', 'Room-Temp Veggies', 'M
 const G_EMOJI = { 'Fridge Veggies':'🥬','Bread/Nuts':'🍞','Fruit':'🍌','Room-Temp Veggies':'🧅','Meat':'🥩','Chips':'🍿','Dairy':'🥛','Misc':'🧺','Alcohol':'🍷' };
 // Old category names → new (TJ's rearranged the store, Aug 2026).
 const G_MIGRATE = { 'Spices':'Misc', 'Veggies':'Fridge Veggies', 'Chips/Nuts':'Chips' };
+
+// ═══════════════════════════ STORE VIEWS ═══════════════════════════════════
+// The list is stored once; a STORE only changes the order you walk it in. An
+// item's `cat` stays the Trader Joe's category (canonical) and the Kroger
+// section is derived from the item NAME, because the two stores group things
+// differently — TJ shelves bacon with dairy, Kroger puts it with breakfast meat.
+//
+// Kroger's departments are consistent chain-wide; the AISLE NUMBERS are not, so
+// none are hardcoded. Sections are the walking order for 5705 Charlotte Pike:
+// perimeter first (produce → bakery → deli → meat → dairy), then the center
+// aisles, then frozen on the way to the registers.
+const K_CATS = ['Produce', 'Bakery', 'Deli & Cheese', 'Meat & Seafood', 'Dairy',
+  'Canned & Pasta', 'Rice & Beans', 'Baking', 'Spices', 'Oils & Condiments',
+  'Snacks & Candy', 'Beverages', 'Frozen', 'Household', 'Kitchen', 'Alcohol', 'Misc'];
+const K_EMOJI = { 'Produce':'🥬','Bakery':'🥖','Deli & Cheese':'🧀','Meat & Seafood':'🥩',
+  'Dairy':'🥛','Canned & Pasta':'🥫','Rice & Beans':'🍚','Baking':'🧁','Spices':'🧂',
+  'Oils & Condiments':'🫒','Snacks & Candy':'🍫','Beverages':'🥤','Frozen':'🧊',
+  'Household':'🧻','Kitchen':'🍳','Alcohol':'🍷','Misc':'🧺' };
+// Name → Kroger section. Substring match, longest first, so "tomato paste"
+// beats "tomato" and "chicken thighs" doesn't land in Deli with the rotisserie.
+const K_KNOWN = {
+  'rotisserie chicken':'Deli & Cheese', 'chicken thigh':'Meat & Seafood', 'chicken wing':'Meat & Seafood',
+  'italian sausage':'Meat & Seafood', 'tomato paste':'Canned & Pasta', 'san marzano':'Canned & Pasta',
+  'peeled':'Canned & Pasta', 'canned':'Canned & Pasta', 'pasta':'Canned & Pasta',
+  'red lentil':'Rice & Beans', 'lentil':'Rice & Beans', 'rice':'Rice & Beans', 'bean':'Rice & Beans',
+  'parmesan':'Deli & Cheese', 'mozzarella':'Deli & Cheese', 'feta':'Deli & Cheese', 'cheese':'Deli & Cheese',
+  'butter':'Dairy', 'milk':'Dairy', 'yogurt':'Dairy', 'egg':'Dairy', 'cream':'Dairy',
+  'flour':'Baking', 'sugar':'Baking', 'chocolate':'Snacks & Candy', 'baking':'Baking',
+  'nutmeg':'Spices', 'bay leaf':'Spices', 'bay leaves':'Spices', 'chile powder':'Spices',
+  'chili powder':'Spices', 'pepper':'Spices', 'spice':'Spices', 'cinnamon':'Spices',
+  'canola':'Oils & Condiments', 'peanut oil':'Oils & Condiments', 'olive oil':'Oils & Condiments',
+  'oil':'Oils & Condiments', 'vinegar':'Oils & Condiments',
+  'onion':'Produce', 'garlic':'Produce', 'parsley':'Produce', 'dill':'Produce', 'basil':'Produce',
+  'thyme':'Produce', 'rosemary':'Produce', 'cilantro':'Produce', 'lemon':'Produce', 'lime':'Produce',
+  'carrot':'Produce', 'potato':'Produce', 'lettuce':'Produce', 'banana':'Produce', 'apple':'Produce',
+  'avocado':'Produce', 'celery':'Produce', 'mushroom':'Produce', 'pepper ':'Produce',
+  'bread':'Bakery', 'bagel':'Bakery', 'tortilla':'Bakery',
+  'loaf pan':'Kitchen', 'box grater':'Kitchen', 'grater':'Kitchen', 'pan':'Kitchen',
+  'foil':'Household', 'paper towel':'Household', 'trash bag':'Household', 'napkin':'Household',
+  'chip':'Snacks & Candy', 'cracker':'Snacks & Candy', 'nut':'Snacks & Candy',
+  'wine':'Alcohol', 'beer':'Alcohol',
+};
+// Fallback when the name says nothing: the TJ category is a decent hint.
+const K_FROM_TJ = { 'Fridge Veggies':'Produce', 'Fruit':'Produce', 'Room-Temp Veggies':'Produce',
+  'Meat':'Meat & Seafood', 'Dairy':'Dairy', 'Bread/Nuts':'Bakery', 'Chips':'Snacks & Candy',
+  'Alcohol':'Alcohol', 'Misc':'Misc' };
+const K_MATCH = Object.keys(K_KNOWN).sort((a, b) => b.length - a.length);
+function krogerSection(g) {
+  const n = (g.name || '').toLowerCase();
+  for (const k of K_MATCH) if (n.includes(k)) return K_KNOWN[k];
+  return K_FROM_TJ[g.cat] || 'Misc';
+}
+const STORES = {
+  tj:     { name: "Trader Joe's", cats: G_CATS, emoji: G_EMOJI, section: g => g.cat,
+            note: "Sorted the way you walk Trader Joe's: fridge veggies → bread/nuts → fruit → room-temp veggies → meat → chips → dairy (bacon's here!) → misc → alcohol." },
+  kroger: { name: 'Kroger',       cats: K_CATS, emoji: K_EMOJI, section: krogerSection,
+            note: "Kroger, 5705 Charlotte Pike — perimeter first (produce → bakery → deli → meat → dairy), then the center aisles, frozen last on the way to the registers. Departments are chain-wide; aisle numbers differ store to store, so check the Kroger app if you need the exact number." },
+};
+let gStore = localStorage.getItem('trailhead-gstore-v1') || 'tj';   // a per-device VIEW, not shared
+function setStore(s) {
+  gStore = STORES[s] ? s : 'tj';
+  try { localStorage.setItem('trailhead-gstore-v1', gStore); } catch {}
+  renderGrocery();
+}
 // Known items auto-file into the right category on add. TJ's quirk honored:
 // bacon lives in the DAIRY case at their store.
 const G_KNOWN = {
@@ -2453,16 +2525,26 @@ function clearGotten() {
   showToast(`${n} item${n>1?'s':''} cleared 🛒`);
 }
 function renderGrocery() {
-  document.getElementById('g-cats').innerHTML = G_CATS.map(c =>
+  const store = STORES[gStore] || STORES.tj;
+  document.getElementById('g-stores').innerHTML = Object.entries(STORES).map(([k, s]) =>
+    `<button class="chip store${gStore===k?' on':''}" onclick="setStore('${k}')">${s.name}</button>`).join('');
+  // The add-category chips name TJ's aisles, which is what an item actually stores.
+  // In the Kroger view the section is derived from the name, so they'd only mislead.
+  const catRow = document.getElementById('g-cats');
+  catRow.style.display = gStore === 'tj' ? '' : 'none';
+  catRow.innerHTML = G_CATS.map(c =>
     `<button class="chip${gCat===c?' on':''}" onclick="gCat='${c}';renderGrocery()">${G_EMOJI[c]} ${c}</button>`).join('');
+  const note = document.getElementById('g-note');
+  if (note) note.textContent = store.note + ' Shared — you both see the same list live.';
   const shown = live(grocery);
   const open = shown.filter(g => !g.got).length;
   document.getElementById('g-count').textContent = open ? `${open} to grab` : 'List clear 🎉';
-  document.getElementById('g-list').innerHTML = G_CATS.map(cat => {
-    const items = shown.filter(g => g.cat === cat);
+  document.getElementById('g-list').innerHTML = store.cats.map(cat => {
+    const items = shown.filter(g => store.section(g) === cat);
     if (!items.length) return '';
     items.sort((a, b) => (a.got?1:0) - (b.got?1:0));   // checked sink within category
-    return `<div class="group-title">${G_EMOJI[cat]} ${cat}</div>` + items.map(g => `
+    const left = items.filter(g => !g.got).length;
+    return `<div class="group-title">${store.emoji[cat]} ${cat}${left ? ` <span class="grp-n">${left}</span>` : ''}</div>` + items.map(g => `
       <div class="g-item${g.got?' got':''}" onclick="toggleGrocery('${g.id}')">
         <span class="g-chk">✓</span>
         <span class="g-nm">${escapeHtml(g.name)}${g.qty?` <span class="g-qty">${escapeHtml(g.qty)}</span>`:''}</span>
