@@ -95,6 +95,8 @@
     .day { background: color-mix(in srgb, var(--sess-color, var(--panel)) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--sess-color, var(--border)) 35%, var(--border)); border-radius: 10px; padding: 6px 5px; min-height: 74px; cursor: pointer; position: relative; transition: transform 0.1s; }
     .day:active { transform: scale(0.96); }
     .day.sess-rest { background: var(--panel); border-color: var(--border); opacity: 0.65; }
+    .day.sess-open { background: var(--panel); border-color: var(--border); border-style: dashed; opacity: 0.8; }
+    .day.sess-open .sess-em { opacity: 0.45; font-weight: 400; }
     .day .dnum { font-size: 9.5px; color: var(--muted2); font-weight: 600; }
     .day .sess-em { font-size: 17px; line-height: 1.3; margin-top: 1px; }
     .day .sess { font-size: 9.5px; font-weight: 800; line-height: 1.25; color: var(--sess-color, var(--muted)); }
@@ -418,6 +420,7 @@
       <span class="hint" id="cal-sub"></span>
       <div class="grow"></div>
       <button class="btn" id="startdate-btn" onclick="changeStartDate()" style="display:none">📅 Start date</button>
+      <button class="btn" id="blank-btn" onclick="toggleBlank()" style="display:none">🧹 Blank calendar</button>
       <button class="btn" id="edit-btn" onclick="toggleEdit()">✎ Edit</button>
     </div>
     <div id="calendar"></div>
@@ -572,6 +575,8 @@ const SESSION_TYPES = {
   run:      { label: 'RUN', em: '🏃', full: 'Run / Walk', color: 'var(--tabata)', kind: 'simple' },
   strength60:{ label: 'STR 60%', em: '🪶', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
   rest:     { label: '', em: '😴', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
+  // Nothing planned. Tapping it asks what you actually did, then logs that.
+  open:     { label: '', em: '＋', full: 'Open — log anything', color: 'var(--muted2)', kind: 'open' },
 };
 // Custom types (Pull, Push, whatever) — user-created, always kind 'exset',
 // stored in plan.customTypes and merged in here so every lookup just works.
@@ -750,6 +755,7 @@ function showToast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
 }
+function fmtDayShort(dt) { return (dt.getMonth() + 1) + '/' + dt.getDate(); }
 function dayDate(w, d) { const dt = new Date(plan.startDate + 'T12:00:00'); dt.setDate(dt.getDate() + w * 7 + d); return dt; }
 function isoOf(dt) { return dt.toISOString().slice(0, 10); }
 function fmtClock(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
@@ -816,15 +822,20 @@ function renderCalendar() {
   renderSummary();
   const el = document.getElementById('calendar');
   const tI = todayIso();
-  document.getElementById('cal-sub').textContent = '6-week build + deload · started ' + plan.startDate;
+  if (ensureBlankWeeks()) savePlan();
+  document.getElementById('cal-sub').textContent = plan.blank
+    ? 'No plan right now — tap any day to log what you did'
+    : '6-week build + deload · started ' + plan.startDate;
   el.innerHTML = plan.weeks.map((wk, wi) => {
     const start = dayDate(wi, 0), end = dayDate(wi, 6);
     const range = (start.getMonth() + 1) + '/' + start.getDate() + ' – ' + (end.getMonth() + 1) + '/' + end.getDate();
     const weekTools = editMode ? `
       <button class="wk-tool" onclick="repeatWeek(${wi})" title="Duplicate this week after itself">⧉ repeat</button>
       ${plan.weeks.length > 1 ? `<button class="wk-tool" onclick="deleteWeek(${wi})" title="Remove this week">✕</button>` : ''}` : '';
+    // A blank calendar has no program weeks, so date it instead of numbering it.
+    const wkLabel = plan.blank ? 'Week of ' + fmtDayShort(start) : wk.label;
     return `<div class="week">
-      <div class="week-label">${escapeHtml(wk.label)} <span class="range">${range}</span>${(() => {
+      <div class="week-label">${escapeHtml(wkLabel)} <span class="range">${range}</span>${(() => {
         const ws = weekStats(wi);
         return ws.count ? `<span class="wk-total">${ws.count} workout${ws.count === 1 ? '' : 's'}${ws.mins ? ' · ' + fmtMins(ws.mins) : ''}</span>` : '';
       })()}${weekTools}</div>
@@ -835,7 +846,7 @@ function renderCalendar() {
         const swapSel = pendingSwap && pendingSwap.wi === wi && pendingSwap.di === di;
         const st2 = d.t2 ? typeOf(d.t2) : null;
         const hasNote = log.some(l => l.date === iso && (l.note || '').trim());
-        return `<div class="day${d.t === 'rest' ? ' sess-rest' : ''}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
+        return `<div class="day${d.t === 'rest' ? ' sess-rest' : ''}${d.t === 'open' ? ' sess-open' : ''}${iso === tI ? ' today' : ''}${done ? ' done' : ''}${editMode ? ' editable' : ''}${swapSel ? ' swap-src' : ''}" style="--sess-color:${st.color}" onclick="dayTap(${wi},${di})">
           <div class="dnum">${dowOf(wi, di)} ${dayDate(wi, di).getDate()}${hasNote ? ' 📝' : ''}</div>
           <div class="sess-em">${st.em}${st2 ? st2.em : ''}</div>
           <div class="sess">${st.label || ''}${d.min ? `<div class="dur">${d.min} min</div>` : ''}${st2 ? `<div class="dur" style="color:${st2.color};font-weight:700">+ ${st2.label}</div>` : ''}</div>
@@ -913,8 +924,7 @@ function toggleEdit() {
   const b = document.getElementById('edit-btn');
   b.textContent = editMode ? '✓ Done editing' : '✎ Edit';
   b.classList.toggle('editing', editMode);
-  const sd = document.getElementById('startdate-btn');
-  if (sd) sd.style.display = editMode ? '' : 'none';
+  syncEditButtons();
   renderCalendar();
 }
 function dayTap(wi, di) {
@@ -936,7 +946,7 @@ function dayTap(wi, di) {
 const DAY_OPTS = [
   ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
   ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['run', 'Run / Walk'], ['yoga', 'Yoga'],
-  ['strength60', 'Deload Strength'], ['rest', 'Rest'],
+  ['strength60', 'Deload Strength'], ['rest', 'Rest'], ['open', 'Open — nothing planned'],
 ];
 function openDayEditor(wi, di) {
   const d = plan.weeks[wi].days[di];
@@ -951,6 +961,23 @@ function openDayEditor(wi, di) {
         : `<button style="grid-column:1/-1" onclick="pickSecond(${wi},${di})">＋ Add a 2nd workout this day…</button>`}
     </div>
     <p class="hint" style="margin-top:12px">Swap moves the whole day. Rides and swims ask for minutes when you log them.</p>`);
+}
+// An open day doesn't know what it is yet, so logging one is: pick what you did
+// → it lands on the calendar → the usual log sheet opens. One pass, no edit mode.
+function pickOpenDay(wi, di) {
+  const opts = DAY_OPTS.filter(([t]) => t !== 'open').concat(customTypeOpts());
+  openSheet(dowOf(wi, di) + ', ' + fmtDayShort(dayDate(wi, di)) + ' — what did you do?', `
+    <div class="sess-pick">
+      ${opts.map(([t, l]) => `<button onclick="logOpenDay(${wi},${di},'${t}')">${typeOf(t).em} ${l}</button>`).join('')}
+      <button style="grid-column:1/-1" onclick="newCustomType(k=>{logOpenDay(${wi},${di},k)})">＋ New workout type…</button>
+    </div>
+    <p class="hint" style="margin-top:12px">This puts it on the calendar for the day and opens the log. Pick ✎ Edit → Open to clear it again.</p>`);
+}
+function logOpenDay(wi, di, t) {
+  const keep = plan.weeks[wi].days[di].min;
+  plan.weeks[wi].days[di] = (t === 'rest' || t === 'open') ? { t } : { t, min: keep };
+  savePlan(); renderCalendar();
+  openSession(wi, di);          // openSheet swaps the picker out for the log sheet
 }
 function pickSecond(wi, di) {
   const opts = DAY_OPTS.filter(([t]) => t !== 'rest').concat(customTypeOpts());
@@ -974,6 +1001,49 @@ function setDay(wi, di, t) {
   const keep = plan.weeks[wi].days[di].min;
   plan.weeks[wi].days[di] = t === 'rest' ? { t } : { t, min: keep };
   savePlan(); closeSheet(); renderCalendar();
+}
+function lastSaturday() {
+  const now = new Date(), sat = new Date(now);
+  sat.setDate(now.getDate() - ((now.getDay() + 1) % 7));
+  return sat;
+}
+// A blank calendar has no end date, so keep a couple of empty weeks out ahead
+// of today — he should never have to think about adding them.
+function ensureBlankWeeks() {
+  if (!plan.blank) return false;
+  const horizon = isoOf(new Date(Date.now() + 14 * 864e5));
+  let added = false, guard = 0;
+  while (guard++ < 60 && isoOf(dayDate(plan.weeks.length - 1, 6)) < horizon) {
+    plan.weeks.push({ label: 'Week ' + (plan.weeks.length + 1), days: Array.from({ length: 7 }, () => ({ t: 'open' })) });
+    added = true;
+  }
+  return added;
+}
+// Clearing the plan never touches `log` — logged workouts key on date+type, not
+// on the calendar, so they survive both directions of this toggle.
+function toggleBlank() {
+  if (plan.blank) {
+    if (!confirm('Put the PT program back?\n\nThe 6-week build + deload returns, starting this Saturday. Workouts you have already logged stay exactly where they are.')) return;
+    const { customTypes, strengthTemplate, exsetTemplates } = plan;
+    plan = seedPlan();
+    if (customTypes) plan.customTypes = customTypes;
+    if (strengthTemplate) plan.strengthTemplate = strengthTemplate;
+    if (exsetTemplates) plan.exsetTemplates = exsetTemplates;
+    showToast('PT program restored');
+  } else {
+    if (!confirm('Clear the calendar?\n\nEvery day becomes open — tap any day to log whatever you actually did. Workouts you have already logged stay put, and you can bring the program back any time.')) return;
+    plan.blank = true;
+    plan.startDate = isoOf(lastSaturday());
+    plan.weeks = Array.from({ length: 8 }, (_, i) => ({ label: 'Week ' + (i + 1), days: Array.from({ length: 7 }, () => ({ t: 'open' })) }));
+    showToast('Calendar cleared — tap any day to log a workout');
+  }
+  savePlan(); renderCalendar(); syncEditButtons();
+}
+function syncEditButtons() {
+  const sd = document.getElementById('startdate-btn');
+  if (sd) sd.style.display = editMode ? '' : 'none';
+  const bb = document.getElementById('blank-btn');
+  if (bb) { bb.style.display = editMode ? '' : 'none'; bb.textContent = plan.blank ? '📋 Restore program' : '🧹 Blank calendar'; }
 }
 function repeatWeek(wi) {
   const copy = JSON.parse(JSON.stringify(plan.weeks[wi]));
@@ -1013,6 +1083,7 @@ function openSession(wi, di, which) {
   const type = which === 't2' ? d.t2 : d.t;
   const st = typeOf(type);
   const iso = isoOf(dayDate(wi, di));
+  if (st.kind === 'open') { pickOpenDay(wi, di); return; }
   if (st.kind === 'rest') { openRestNote(iso); return; }
 
   const existing = log.find(l => l.date === iso && l.type === type);
@@ -1180,6 +1251,10 @@ function _rerenderSession(keepOpen) {
   if (_kindOfActive() === 'strength') renderStrengthSheet(title);
   else renderExsetSheet(title);
   [...new Set([...openIds, keepOpen])].forEach(i => { const el = document.getElementById('exsets-' + i); if (el) el.style.display = ''; });
+  // Re-opening those sets makes the body taller, so the restore inside
+  // openSheet was clamped against a shorter box. Re-apply now it's full height.
+  const body = document.querySelector('#sheet .sheet-body');
+  if (body && _sheetScroll) body.scrollTop = _sheetScroll;
   _armClock();
 }
 
@@ -1310,10 +1385,18 @@ function pickSetVal(xi, si, field) {
 }
 
 // ═════════════════════════════ SHEET + DRUM ════════════════════════════════
+let _sheetScroll = 0;
 function openSheet(title, bodyHtml) {
   // DOM-only teardown: a re-render must NOT reset exEditMode (that's what made
   // edit mode drop out after every single change).
-  document.getElementById('sheet')?.remove();
+  // Re-rendering the SAME sheet replaces .sheet-body, and a fresh node starts at
+  // scrollTop 0 — that's what bounced you to the top every time you ticked a set
+  // near the bottom. Carry the position over when the title says it's the same
+  // sheet; a genuinely different sheet still opens at the top.
+  const prev = document.getElementById('sheet');
+  const sameSheet = prev && prev.querySelector('.ttl')?.textContent === title;
+  _sheetScroll = sameSheet ? (prev.querySelector('.sheet-body')?.scrollTop || 0) : 0;
+  prev?.remove();
   const ov = document.createElement('div');
   ov.className = 'sheet-overlay'; ov.id = 'sheet';
   ov.onclick = e => { if (e.target === ov) closeSheet(); };
@@ -1322,6 +1405,7 @@ function openSheet(title, bodyHtml) {
     <div class="sheet-body">${bodyHtml}</div>
   </div>`;
   document.body.appendChild(ov);
+  if (_sheetScroll) ov.querySelector('.sheet-body').scrollTop = _sheetScroll;
 }
 function closeSheet() { document.getElementById('sheet')?.remove(); exEditMode = false; clearInterval(wtTick); }
 
