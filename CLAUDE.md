@@ -89,7 +89,8 @@ Array collections used to merge by **union**, which cannot express a deletion. A
 4. Fetch before push (Michael edits via GitHub web sometimes).
 5. Simplicity wins; commit one recommendation; plain English.
 6. **Never set a form field under 16px on mobile** — iOS Safari auto-zooms on focus, which pushed the grocery Add button off-screen. A `@media (max-width: 820px)` block forces `input/textarea/select` to 16px; don't override it downward.
-7. **Lively colors** — Michael explicitly rejected subdued/earthy. Alpine-sunrise palette: navy `#171e33` + vivid orange/teal/green/purple. Keep new UI punchy in BOTH themes.
+7. **The repo is PUBLIC — no real personal data in committed constants.** Seed data (`STRENGTH_TEMPLATE`, `DEFAULT_TASKS`, `EATS_DB` blurbs…) ships in `index.html` and is world-readable. Real loads, assignees, ratings and notes belong in Supabase, where RLS protects them; the constants carry round placeholders and blank assignees. `lastWeights()` and `plan.strengthTemplate` both override the seed, so a placeholder is only ever seen on a device with no history. Don't "helpfully" restore real values.
+8. **Lively colors** — Michael explicitly rejected subdued/earthy. Alpine-sunrise palette: navy `#171e33` + vivid orange/teal/green/purple. Keep new UI punchy in BOTH themes.
 
 ## Deploy
 ```bash

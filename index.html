@@ -633,19 +633,25 @@ function seedPlan() {
 // ACTUAL 2026-08-08 session (the shared-drive spreadsheet), so first-time
 // prefill = the weights he really lifted. Weight 0 = bodyweight.
 // The live list is editable in-app and persists as plan.strengthTemplate.
+// Exercise list and set/rep scheme come from the PT program. The weights are
+// round PLACEHOLDERS, not anyone's real loads — this file is public. Actual
+// loads live in the `log` collection in Supabase and lastWeights() prefills
+// every set from the most recent logged session, so these numbers only ever
+// surface on a device with no history. Editing them in-app persists as
+// plan.strengthTemplate, which always wins over this list.
 const STRENGTH_TEMPLATE = [
-  { name: 'Hamstring Curls', sets: 4, reps: 6,  w: 100 },
+  { name: 'Hamstring Curls', sets: 4, reps: 6,  w: 50 },
   { name: 'Push Ups',        sets: 3, reps: 10, w: 0 },
-  { name: 'Hip Thrusters',   sets: 3, reps: 10, w: 90 },
-  { name: 'Shoulder Press',  sets: 3, reps: 10, w: 120 },
-  { name: 'RDL',             sets: 2, reps: 10, w: 60 },
-  { name: 'Shrugs',          sets: 3, reps: 8,  w: 80 },
-  { name: 'Lat Pull',        sets: 3, reps: 10, w: 150 },
-  { name: 'Leg Ext',         sets: 3, reps: 10, w: 130 },
+  { name: 'Hip Thrusters',   sets: 3, reps: 10, w: 50 },
+  { name: 'Shoulder Press',  sets: 3, reps: 10, w: 50 },
+  { name: 'RDL',             sets: 2, reps: 10, w: 50 },
+  { name: 'Shrugs',          sets: 3, reps: 8,  w: 50 },
+  { name: 'Lat Pull',        sets: 3, reps: 10, w: 50 },
+  { name: 'Leg Ext',         sets: 3, reps: 10, w: 50 },
   { name: 'Bench Press',     sets: 3, reps: 10, w: 0 },
-  { name: 'Leg Press',       sets: 3, reps: 10, w: 230 },
-  { name: 'Calf Raises',     sets: 3, reps: 10, w: 260 },
-  { name: 'Row',             sets: 3, reps: 10, w: 180 },
+  { name: 'Leg Press',       sets: 3, reps: 10, w: 50 },
+  { name: 'Calf Raises',     sets: 3, reps: 10, w: 50 },
+  { name: 'Row',             sets: 3, reps: 10, w: 50 },
   { name: 'Hypers',          sets: 3, reps: 10, w: 0 },
 ];
 function strengthTemplate() {
@@ -1778,7 +1784,7 @@ const EATS_DB = [
   ['Tailor','Germantown','Indian tasting',4,'o','o','Vivek Surti\'s dinner-party tasting menu — prepaid tickets, Thu-Sun.','Josh\'s MBA friend owns it and talks the courses','j'],
   ['Chauhan Ale & Masala House','Gulch','Indian',3,'o','o','Maneet Chauhan\'s Indian-Southern mashups.','Nicest to-go Indian around',''],
   ['Epice','12 South','Lebanese',3,'o','o','Intimate Lebanese bistro, 11 years running.','Great people-watching around it',''],
-  ['Etch','Downtown','Upscale Dining',4,'o','o','Deb Paquette\'s globally spiced menu.','Cauliflower: best thing I\'ve ever eaten — Rachel',''],
+  ['Etch','Downtown','Upscale Dining',4,'o','o','Deb Paquette\'s globally spiced menu.','Cauliflower: best thing we\'ve ever eaten',''],
   ['Hawkers','East Nashville','Asian Street Food',2,'o','o','Pan-Asian small plates; reopened May 2026 after a fire.','Games and casual bar',''],
   ['Smith & Lentz','East Nashville','Pizza + Brewery',2,'o','o','Craft brewery with acclaimed thin-crust pizzas.','',''],
   ['Korea House','Charlotte Park','Korean',2,'o','o','Family-run banchan-loaded homestyle Korean. Closed Thu & Sun.','Hole in the wall but good',''],
@@ -2041,12 +2047,14 @@ const GEO_APPROX = new Set(['e106','e114','e116','e121','e124','e128','e136','e1
 // Task: { id, name, cat, every, unit, last, next, who, note, hist[] }
 const T_CATS = { Home:'🏠', Car:'🚗', Pets:'🐾', Plants:'🌱', Other:'🧰' };
 const T_UNITS = ['day', 'week', 'month', 'year'];
+// `who` is free text, assigned per task in the app and synced through Supabase.
+// Left blank here on purpose — these defaults ship in a public file.
 const DEFAULT_TASKS = [
   { name: 'Change house water filter', cat: 'Home',   every: 6, unit: 'month', who: '' },
   { name: 'Change HVAC filters',       cat: 'Home',   every: 3, unit: 'month', who: '' },
   { name: 'Car oil change',            cat: 'Car',    every: 6, unit: 'month', who: '' },
-  { name: "Cat's water bowl",          cat: 'Pets',   every: 1, unit: 'week',  who: 'Rachel' },
-  { name: 'Water the plants',          cat: 'Plants', every: 1, unit: 'week',  who: 'Rachel' },
+  { name: "Cat's water bowl",          cat: 'Pets',   every: 1, unit: 'week',  who: '' },
+  { name: 'Water the plants',          cat: 'Plants', every: 1, unit: 'week',  who: '' },
 ];
 
 let tasks = [];
