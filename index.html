@@ -716,6 +716,7 @@ function loadLocal() {
   try { aisles = JSON.parse(localStorage.getItem('trailhead-aisles-v1') || '{}') || {}; } catch { aisles = {}; }
   try { tasks = JSON.parse(localStorage.getItem('trailhead-tasks-v1') || 'null'); } catch { tasks = null; }
   if (!Array.isArray(tasks)) seedTasks();
+  if (migrateTasks(tasks)) saveTasks();
   // TJ's store-rearrangement migration (also fixes items mis-filed under Misc).
   let gDirty = migrateGrocery(grocery);
   gDirty = dedupeGrocery(grocery) || gDirty;
@@ -2052,13 +2053,17 @@ const T_CATS = { Home:'🏠', Car:'🚗', Pets:'🐾', Plants:'🌱', Other:'�
 const T_UNITS = ['day', 'week', 'month', 'year'];
 // `who` is free text, assigned per task in the app and synced through Supabase.
 // Left blank here on purpose — these defaults ship in a public file.
+// Seed ids are FIXED strings, never Date.now(). Sync matches items by id, so
+// clock-based seed ids made every fresh device's copy of "Water the plants"
+// look like a brand-new chore — each new device silently added five more.
 const DEFAULT_TASKS = [
-  { name: 'Change house water filter', cat: 'Home',   every: 6, unit: 'month', who: '' },
-  { name: 'Change HVAC filters',       cat: 'Home',   every: 3, unit: 'month', who: '' },
-  { name: 'Car oil change',            cat: 'Car',    every: 6, unit: 'month', who: '' },
-  { name: "Cat's water bowl",          cat: 'Pets',   every: 1, unit: 'week',  who: '' },
-  { name: 'Water the plants',          cat: 'Plants', every: 1, unit: 'week',  who: '' },
+  { id: 'seed-water-filter', name: 'Change house water filter', cat: 'Home',   every: 6, unit: 'month', who: '' },
+  { id: 'seed-hvac',         name: 'Change HVAC filters',       cat: 'Home',   every: 3, unit: 'month', who: '' },
+  { id: 'seed-oil',          name: 'Car oil change',            cat: 'Car',    every: 6, unit: 'month', who: '' },
+  { id: 'seed-cat-bowl',     name: "Cat's water bowl",          cat: 'Pets',   every: 1, unit: 'week',  who: '' },
+  { id: 'seed-plants',       name: 'Water the plants',          cat: 'Plants', every: 1, unit: 'week',  who: '' },
 ];
+const SEED_BY_NAME = Object.fromEntries(DEFAULT_TASKS.map(d => [d.name, d.id]));
 
 let tasks = [];
 let maintView = 'list';   // 'list' | 'cal'
@@ -2068,12 +2073,45 @@ function saveTasks() {
   try { localStorage.setItem('trailhead-tasks-v1', JSON.stringify(tasks)); } catch {}
   cloudPush('tasks');
 }
+// A seeded copy carries no `ts`, so when it meets the real one in the cloud the
+// cloud's history always wins the merge. A chore you deleted stays deleted too,
+// because its tombstone's ts beats the seed's zero.
 function seedTasks() {
   const t = todayIso();
-  tasks = DEFAULT_TASKS.map((d, i) => ({
-    id: 't' + Date.now() + i, ...d, last: null, next: t, note: '', hist: [],
-  }));
+  tasks = DEFAULT_TASKS.map(d => ({ ...d, last: null, next: t, note: '', hist: [] }));
   saveTasks();
+}
+// Which of two copies of the same starter chore is the one worth keeping.
+function betterTask(a, b) {
+  const ha = (a.hist || []).length, hb = (b.hist || []).length;
+  if (ha !== hb) return ha > hb;
+  return (a.last || '') > (b.last || '');
+}
+// One-time repair for the clock-id era: fold duplicate starter chores onto the
+// fixed seed id, keeping whichever copy actually carries the history, and
+// tombstone every id being retired so other devices drop their copies too.
+function migrateTasks(arr) {
+  if (!Array.isArray(arr)) return false;
+  const keep = new Map();
+  for (const t of live(arr)) {
+    const seed = SEED_BY_NAME[t.name];
+    if (!seed) continue;
+    const cur = keep.get(seed);
+    if (!cur || betterTask(t, cur)) keep.set(seed, t);
+  }
+  let dirty = false;
+  for (const t of live(arr)) {
+    const seed = SEED_BY_NAME[t.name];
+    if (!seed) continue;
+    if (keep.get(seed) !== t) { tombstone(arr, t.id); dirty = true; continue; }
+    if (t.id === seed) continue;
+    const old = t.id;
+    t.id = seed; touch(t);
+    // tombstone() would strip the keeper itself, so retire the old id separately.
+    arr.push({ id: old, del: Date.now(), ts: Date.now() });
+    dirty = true;
+  }
+  return dirty;
 }
 // Calendar-correct interval math (month/year land on the same day-of-month).
 function addInterval(iso, n, unit) {
