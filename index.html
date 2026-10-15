@@ -572,7 +572,9 @@ const SESSION_TYPES = {
   pz:       { label: 'PZ RIDE', em: '🚴', full: 'Power Zone Ride', color: 'var(--ride)', kind: 'simple' },
   tabata:   { label: 'TABATA', em: '🔥', full: 'Tabata Ride', color: 'var(--tabata)', kind: 'simple' },
   yoga:     { label: 'YOGA', em: '🧘', full: 'Yoga', color: 'var(--swim)', kind: 'simple' },
-  run:      { label: 'RUN', em: '🏃', full: 'Run / Walk', color: 'var(--tabata)', kind: 'simple' },
+  run:      { label: 'RUN', em: '🏃', full: 'Run', color: 'var(--tabata)', kind: 'simple' },
+  walk:     { label: 'WALK', em: '🚶', full: 'Walk', color: 'var(--accent)', kind: 'simple' },
+  pilates:  { label: 'PILATES', em: '🤸', full: 'Pilates', color: 'var(--plyo)', kind: 'simple' },
   strength60:{ label: 'STR 60%', em: '🪶', full: 'Deload Strength (~60% loads, 2×10)', color: 'var(--strength)', kind: 'strength' },
   rest:     { label: '', em: '😴', full: 'Rest (dailies only)', color: 'var(--rest)', kind: 'rest' },
   // Nothing planned. Tapping it asks what you actually did, then logs that.
@@ -867,7 +869,7 @@ function renderCalendar() {
 function sessionBucket(type) {
   if (type === 'swim') return 'swims';
   if (type === 'pz' || type === 'tabata') return 'bikes';
-  if (type === 'run' || type === 'plyo') return 'runs';
+  if (type === 'run' || type === 'walk' || type === 'plyo') return 'runs';
   const k = typeOf(type).kind;
   if (k === 'strength' || k === 'exset') return 'weights';
   return 'other';
@@ -951,7 +953,8 @@ function dayTap(wi, di) {
 // Edit mode: pick what a day is, add a second workout, or arm a swap.
 const DAY_OPTS = [
   ['strength', 'Full Body Strength'], ['plyo', 'Plyo + Run/Walk'], ['swim', 'Swim'],
-  ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['run', 'Run / Walk'], ['yoga', 'Yoga'],
+  ['pz', 'Power Zone Ride'], ['tabata', 'Tabata Ride'], ['run', 'Run'], ['walk', 'Walk'],
+  ['yoga', 'Yoga'], ['pilates', 'Pilates'],
   ['strength60', 'Deload Strength'], ['rest', 'Rest'], ['open', 'Open — nothing planned'],
 ];
 function openDayEditor(wi, di) {
