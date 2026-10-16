@@ -1157,7 +1157,7 @@ function _sessionHead(s, typ) {
       <span style="display:flex;align-items:center;gap:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</span>
       <button class="btn${exEditMode ? ' editing' : ''}" onclick="toggleExEdit()">${exEditMode ? '✓ Done reorganizing' : '✎ Edit exercises'}</button>
     </div>
-    <textarea class="note-in" id="sess-note" style="min-height:44px;margin-bottom:10px" placeholder="Notes for this workout — how it felt, anything to flag…">${escapeHtml(s.note || '')}</textarea>`;
+    <textarea class="note-in" id="sess-note" oninput="noteTyped()" style="min-height:44px;margin-bottom:10px" placeholder="Notes for this workout — how it felt, anything to flag…">${escapeHtml(s.note || '')}</textarea>`;
 }
 
 function renderStrengthSheet(title) {
@@ -1358,7 +1358,7 @@ function renderSimpleSheet(title) {
   openSheet(title + ' · ' + s.date, `
     <div class="simple-done">
       <button class="timer-chip" onclick="pickSessionMin()"><span id="sess-min">${s.min}</span><span class="u"> min</span></button>
-      <textarea class="note-in" id="sess-note" placeholder="Optional note — how did it feel?">${escapeHtml(s.note || '')}</textarea>
+      <textarea class="note-in" id="sess-note" oninput="noteTyped()" placeholder="Optional note — how did it feel?">${escapeHtml(s.note || '')}</textarea>
       <div class="timer-go" style="width:100%">
         <button class="btn" onclick="closeSheet()">Close</button>
         <button class="btn primary" onclick="finishSession()">Mark done ✓</button>
@@ -1367,11 +1367,22 @@ function renderSimpleSheet(title) {
     <p class="hint" style="margin-top:10px">Time-based, never distance. Conversational unless the calendar says tabata.</p>`);
 }
 function pickSessionMin() {
-  openDrum('Minutes', rangeVals(10, 120, 5), activeSession.min, v => {
+  openDrum('Minutes', rangeVals(5, 180, 5), activeSession.min, v => {
     activeSession.min = v; const el = document.getElementById('sess-min'); if (el) el.textContent = v; stashSession();
   });
 }
 
+// Notes must survive leaving the sheet ANY way — Franklin types them before a
+// workout and taps Close. The textarea used to be read only by finishSession()
+// and _rerenderSession(), so anything typed without finishing was thrown away.
+let noteTick = null;
+function noteTyped() {
+  const el = document.getElementById('sess-note');
+  if (!el || !activeSession) return;
+  activeSession.note = el.value;
+  clearTimeout(noteTick);
+  noteTick = setTimeout(() => { if (activeSession) stashSession(); }, 400);
+}
 function stashSession() {
   // Keep the working copy in the log as we go, so nothing is lost mid-workout.
   const i = log.findIndex(l => l.date === activeSession.date && l.type === activeSession.type);
@@ -1417,7 +1428,11 @@ function openSheet(title, bodyHtml) {
   document.body.appendChild(ov);
   if (_sheetScroll) ov.querySelector('.sheet-body').scrollTop = _sheetScroll;
 }
-function closeSheet() { document.getElementById('sheet')?.remove(); exEditMode = false; clearInterval(wtTick); }
+function closeSheet() {
+  const note = document.getElementById('sess-note');
+  if (note && activeSession) { activeSession.note = note.value; clearTimeout(noteTick); stashSession(); }
+  document.getElementById('sheet')?.remove(); exEditMode = false; clearInterval(wtTick);
+}
 
 function rangeVals(min, max, step) {
   const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
