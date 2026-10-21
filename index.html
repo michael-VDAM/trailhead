@@ -314,6 +314,45 @@
     .mcell .mt { font-size: 8.5px; font-weight: 700; line-height: 1.25; margin-top: 2px; color: var(--t-color);
                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* ═══════════════════════ PT / REHAB ═══════════════════════ */
+    .pt-hero { background: var(--panel); border: 1px solid var(--border); border-left: 5px solid var(--b-color, var(--accent)); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+    .pt-hero h2 { margin: 0 0 3px; font-size: 19px; }
+    .pt-hero .sub { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .pt-prog { height: 8px; border-radius: 99px; background: var(--panel3); overflow: hidden; margin: 11px 0 7px; }
+    .pt-prog i { display: block; height: 100%; background: var(--b-color, var(--accent)); transition: width 0.3s; }
+    .pt-blocks { display: flex; gap: 6px; margin-top: 12px; }
+    .pt-blocks button { flex: 1; border: 1px solid var(--border); background: var(--panel2); color: var(--muted); border-radius: 9px; padding: 8px 4px; font-size: 11px; font-weight: 700; cursor: pointer; line-height: 1.3; }
+    .pt-blocks button.on { background: var(--b-color); border-color: var(--b-color); color: #fff; }
+    .pt-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+    .pt-card h3 { font-size: 15px; margin: 0 0 5px; display: flex; align-items: center; gap: 8px; }
+    .pt-card h3 .freq { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted2); background: var(--panel3); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+    .pt-det { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 11px; }
+    .pt-sets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pt-set { min-width: 60px; height: 48px; border-radius: 10px; border: 2px solid var(--border); background: var(--panel2); color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 10px; }
+    .pt-set.done { background: var(--success); border-color: var(--success); color: #04210f; }
+    .pt-set.run { background: var(--accent); border-color: var(--accent); color: #241000; }
+    .pt-pain { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; align-items: center; }
+    .pt-pain .lbl { font-size: 12px; color: var(--muted); margin-right: 3px; width: 100%; }
+    .pt-pain button { width: 30px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel2); color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .pt-pain button.on { color: #fff; border-color: transparent; }
+    .pt-note { width: 100%; margin-top: 11px; background: var(--panel2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 9px 10px; font-size: 14px; resize: vertical; min-height: 44px; font-family: inherit; }
+    .pt-gate { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 11px 13px; font-size: 13px; line-height: 1.55; }
+    .pt-measure label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+    .pt-measure input { width: 130px; background: var(--panel2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px; font-size: 16px; }
+    .pt-hist .row { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); align-items: center; font-size: 13px; }
+    .pt-hist .row .d { font-weight: 700; min-width: 52px; }
+    .pt-hist .row .m { color: var(--muted); }
+    .pt-hist .row .c { margin-left: auto; color: var(--muted2); font-size: 12px; }
+    .pt-dot { width: 9px; height: 9px; border-radius: 99px; display: inline-block; }
+    .pt-rule { display: flex; gap: 10px; padding: 9px 0; font-size: 13px; line-height: 1.5; border-top: 1px solid var(--border); }
+    .pt-rule:first-child { border-top: none; padding-top: 0; }
+    .pt-rule .w { font-weight: 700; flex: 0 0 44%; }
+    @media (max-width: 820px) {
+      .pt-set { flex: 1 1 52px; min-width: 52px; padding: 0 4px; }
+      .pt-rule { flex-direction: column; gap: 2px; }
+      .pt-rule .w { flex: none; }
+    }
+
     /* ═══════════════════════ FULLSCREEN TIMER ═══════════════════════ */
     .timer-fs { display: none; position: fixed; inset: 0; z-index: 600; background: var(--bg);
                 flex-direction: column; align-items: center; justify-content: center;
@@ -372,6 +411,7 @@
   <button class="tab-btn" data-tab="eats" onclick="switchTab('eats')">Eats</button>
   <button class="tab-btn" data-tab="grocery" onclick="switchTab('grocery')">Grocery</button>
   <button class="tab-btn" data-tab="maint" onclick="switchTab('maint')">House</button>
+  <button class="tab-btn" data-tab="pt" onclick="switchTab('pt')">Rehab</button>
   <button class="tab-btn" data-tab="map" onclick="switchTab('map')">Map</button>
 </nav>
 
@@ -408,6 +448,10 @@
       <button class="tile" onclick="switchTab('maint')">
         <span class="em">🏠</span><h3>House</h3>
         <p>Filters, oil changes, plants — mark done and it reschedules itself.</p>
+      </button>
+      <button class="tile" onclick="switchTab('pt')">
+        <span class="em">🤚</span><h3>Rehab</h3>
+        <p>Finger flexor plan — timed holds, per-set logging, pain and range.</p>
       </button>
     </div>
   </div>
@@ -529,6 +573,13 @@
     <div class="chip-row" id="maint-views"></div>
     <div id="maint-body"></div>
     <p class="hint" style="margin-top:8px">Hit <b>Done</b> and the next one schedules itself from today. Shared — you both see the same list.</p>
+  </div>
+
+  <!-- ═══════════ PT / REHAB ═══════════ -->
+  <div class="tabpane" id="pane-pt">
+    <h2>Rehab</h2>
+    <p class="hint">Log every set, time the holds, track pain and range. Advance on the gate, not the date.</p>
+    <div id="pt-body"></div>
   </div>
 
   <!-- ═══════════ MAP ═══════════ -->
@@ -723,6 +774,9 @@ function loadLocal() {
   if (gDirty) saveGrocery();
   if (seedHistoryFromList()) saveHistory();
   if (Array.isArray(staples) && migrateGrocery(staples)) saveStaples();
+  try { ptPlan = JSON.parse(localStorage.getItem(PT_KEY) || 'null'); } catch { ptPlan = null; }
+  if (!ptPlan || !ptPlan.v) ptPlan = seedPt();
+  try { ptLog = JSON.parse(localStorage.getItem(PT_LOG_KEY) || '[]'); if (!Array.isArray(ptLog)) ptLog = []; } catch { ptLog = []; }
 }
 function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} cloudPush('plan'); }
 function saveLog()  { try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {} cloudPush('log'); }
@@ -800,6 +854,7 @@ function switchTab(t) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.body.classList.remove('nav-hidden');   // nav always returns on tab change
   scrollTo(0, 0);
+  if (t === 'pt') renderPT();
   if (t === 'map') openMap();
 }
 
@@ -2854,6 +2909,274 @@ function saveListAsRecipe() {
   showToast('Saved 🍳 — one tap re-adds it all next time');
 }
 
+// ═════════════════════════════ PT / REHAB ══════════════════════════════════
+// Finger flexor rehab. Three blocks over six weeks, and you advance on the
+// GATE rather than the calendar — so the block is explicit state, not a date
+// calculation. The calendar bar only shows how long you've been in it.
+//
+// Per the public-repo rule, nothing in these constants is personal: the
+// program is generic rehab content. Measurements, pain scores and notes live
+// in Supabase behind RLS.
+const PT_KEY = 'trailhead-pt-v1';
+const PT_LOG_KEY = 'trailhead-ptlog-v1';
+const PT_START = '2026-10-21';
+
+const PT_BLOCKS = [
+  {
+    n: 1, name: 'Settle and glide', weeks: 2, color: 'var(--swim)',
+    goal: 'Keep the tendon moving without asking it for force.',
+    gate: 'Five-second holds at or near painless, and nothing flaring the next morning.',
+    ex: [
+      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: '3× daily', sets: 5, sec: 0,
+        det: 'All four fingers together — these are hand shapes, not finger shapes. One cycle is straight → hook → straight → straight fist → straight → full fist → straight, about 3 seconds in each shape. Five cycles.' },
+      { key: 'iso', em: '⬇️', name: 'Isometric press', freq: '2–3× daily', sets: 3, sec: 5,
+        det: 'Pads flat on a tabletop, press down and hold. Nothing moves. All four fingers in week 1; middle finger alone in week 2.' },
+      { key: 'massage', em: '👐', name: 'Gentle massage', freq: 'after the glides', sets: 1, sec: 150,
+        det: 'Two to three minutes over the sore spot in the palm.' },
+    ],
+  },
+  {
+    n: 2, name: 'Reload', weeks: 2, color: 'var(--accent)',
+    goal: 'Start asking for force through range, not just a static hold.',
+    gate: 'All of it at 3/10 or less while you do it, and no next-day soreness.',
+    ex: [
+      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: '2× daily', sets: 5, sec: 0,
+        det: 'Same cycle, dropped to twice a day now that loading has started.' },
+      { key: 'iso2', em: '⬇️', name: 'Isometric holds', freq: '3× weekly', sets: 4, sec: 20,
+        det: 'Long holds now. Build 20 s → 30 s → 45 s across the block, one step a week. Time before effort.' },
+      { key: 'band', em: '🎗', name: 'Banded finger curls', freq: '3× weekly', sets: 3, sec: 0,
+        det: 'Band over the fingers, curl closed against it. 6–8 controlled reps. Reps before resistance.' },
+      { key: 'ecc', em: '↩️', name: 'Slow eccentrics', freq: '3× weekly', sets: 3, sec: 0,
+        det: 'From closed, fight the band open over 5 seconds. 6–10 reps. Open hand only — never a crimp.' },
+    ],
+  },
+  {
+    n: 3, name: 'Rebuild', weeks: 2, color: 'var(--success)',
+    goal: 'Back to real grip demand.',
+    gate: 'Full grip, no pain during or after. Clamp handle at working force.',
+    ex: [
+      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: 'daily', sets: 5, sec: 0,
+        det: 'Keep them going as a warm-up.' },
+      { key: 'load', em: '💪', name: 'Loaded grip work', freq: '2× weekly max', sets: 4, sec: 30,
+        det: '48–72 hours between sessions. Half-crimp before full crimp, and only once it has been cleared.' },
+      { key: 'shop', em: '🪵', name: 'Shop task, graded', freq: '2× weekly', sets: 1, sec: 0,
+        det: 'Back in order of demand: carrying, then sanding, then clamping, then hand planing.' },
+    ],
+  },
+];
+
+const PT_RULES = [
+  ['Pain above 3/10 mid-set', 'Stop that set. Cut the hold or load by a quarter, then carry on.'],
+  ['Pain above 5/10 at any point', 'Stop the session.'],
+  ['Still sore the next morning', "Skip a day, then repeat last week's dose. Do not advance."],
+  ['Tip-to-crease worse two days running', 'Stop loading. Back to glides only, and message the PT.'],
+  ['Swelling, or it wakes you at night', 'Stop, message the PT.'],
+  ['Any new catching, clicking or locking', 'Stop immediately and message the PT.'],
+  ['The nodule gets bigger or more tender', 'Message the PT.'],
+];
+
+let ptPlan = null, ptLog = [], ptTimer = null;
+
+function seedPt() { return { v: 1, start: PT_START, block: 1, blockStart: PT_START, gates: [] }; }
+function savePt() { try { localStorage.setItem(PT_KEY, JSON.stringify(ptPlan)); } catch {} cloudPush('pt'); }
+function savePtLog() { try { localStorage.setItem(PT_LOG_KEY, JSON.stringify(ptLog)); } catch {} cloudPush('ptlog'); }
+
+function ptBlock() { return PT_BLOCKS[Math.min(PT_BLOCKS.length - 1, Math.max(0, (ptPlan.block || 1) - 1))]; }
+function ptDaysSince(iso) { return Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(iso + 'T12:00:00')) / 864e5) + 1; }
+function ptPainColor(v) { return v <= 3 ? 'var(--success)' : v <= 5 ? 'var(--tabata)' : 'var(--danger)'; }
+function ptFmtSec(s) { return s >= 60 ? Math.round(s / 60) + ' min' : s + 's'; }
+
+// One entry per DAY, mirroring the workout log's {date, exercises:[…]} shape.
+function ptEntry(date, create) {
+  let e = live(ptLog).find(x => x.date === date);
+  if (!e && create) {
+    e = { id: 'pt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          date, block: ptPlan.block, exercises: [], tip: null, pain: null, note: '', ts: Date.now() };
+    ptLog.push(e);
+  }
+  return e;
+}
+function ptEx(entry, key, nsets) {
+  let x = entry.exercises.find(e => e.key === key);
+  if (!x) { x = { key, sets: [], pain: null, note: '' }; entry.exercises.push(x); }
+  while (x.sets.length < nsets) x.sets.push({ done: false });
+  return x;
+}
+function ptDoneCount(e) {
+  if (!e) return 0;
+  return (e.exercises || []).reduce((n, x) => n + (x.sets || []).filter(s => s.done).length, 0);
+}
+function ptTotalSets(b) { return b.ex.reduce((n, x) => n + x.sets, 0); }
+
+// ─── Logging ────────────────────────────────────────────────────────────────
+function ptTapSet(key, i, nsets, sec) {
+  if (ptTimer && ptTimer.key === key && ptTimer.i === i) { ptStopTimer(); return; }
+  const e = ptEntry(todayIso(), true), x = ptEx(e, key, nsets);
+  if (x.sets[i].done) { x.sets[i].done = false; delete x.sets[i].at; touch(e); savePtLog(); renderPT(); return; }
+  if (sec > 0) { ptStartTimer(key, i, nsets, sec); return; }
+  ptMarkSet(key, i, nsets);
+}
+function ptMarkSet(key, i, nsets) {
+  const e = ptEntry(todayIso(), true), x = ptEx(e, key, nsets);
+  x.sets[i].done = true; x.sets[i].at = Date.now();
+  touch(e); savePtLog(); renderPT();
+}
+function ptStartTimer(key, i, nsets, sec) {
+  ptStopTimer();
+  keepAwake(true);
+  ptTimer = { key, i, nsets, left: sec };
+  renderPT();
+  ptTimer.iv = setInterval(() => {
+    if (!ptTimer) return;
+    ptTimer.left--;
+    if (ptTimer.left <= 0) {
+      const k = ptTimer.key, idx = ptTimer.i, n = ptTimer.nsets;
+      clearInterval(ptTimer.iv); ptTimer = null; keepAwake(false);
+      beepBeep(); try { navigator.vibrate?.([120, 60, 120]); } catch {}
+      ptMarkSet(k, idx, n);
+    } else {
+      const el = document.getElementById('ptset-' + key + '-' + i);
+      if (el) el.textContent = ptTimer.left + 's';
+    }
+  }, 1000);
+}
+function ptStopTimer() {
+  if (ptTimer) { clearInterval(ptTimer.iv); ptTimer = null; keepAwake(false); renderPT(); }
+}
+function ptSetDayPain(v) { const e = ptEntry(todayIso(), true); e.pain = e.pain === v ? null : v; touch(e); savePtLog(); renderPT(); }
+function ptSetExPain(key, v) {
+  const e = ptEntry(todayIso(), true), x = ptEx(e, key, 0);
+  x.pain = x.pain === v ? null : v; touch(e); savePtLog(); renderPT();
+}
+function ptSetTip(val) {
+  const e = ptEntry(todayIso(), true);
+  const n = parseFloat(val);
+  e.tip = isNaN(n) ? null : n; touch(e); savePtLog(); renderPT();
+}
+function ptExNote(key, val) { const e = ptEntry(todayIso(), true), x = ptEx(e, key, 0); x.note = val; touch(e); savePtLog(); }
+function ptDayNote(val) { const e = ptEntry(todayIso(), true); e.note = val; touch(e); savePtLog(); }
+
+function ptClearGate() {
+  if (ptPlan.block >= PT_BLOCKS.length) { showToast('That was the last block — this one is done'); return; }
+  const next = ptPlan.block + 1;
+  if (!confirm('Gate cleared?\n\nThis starts block ' + next + ' from today. If any part of the gate is not met, repeat the block instead.')) return;
+  ptPlan.gates = ptPlan.gates || [];
+  ptPlan.gates.push({ block: ptPlan.block, on: todayIso() });
+  ptPlan.block = next; ptPlan.blockStart = todayIso();
+  savePt(); renderPT(); showToast('Block ' + next + ' started');
+}
+function ptGoBlock(n) {
+  if (n === ptPlan.block) return;
+  if (!confirm('Switch to block ' + n + '? The gate for the current block has not been recorded as cleared.')) return;
+  ptPlan.block = n; ptPlan.blockStart = todayIso(); savePt(); renderPT();
+}
+function ptRestart() {
+  if (!confirm('Restart the plan from today? Your logged days are kept.')) return;
+  ptPlan = seedPt(); ptPlan.start = ptPlan.blockStart = todayIso(); savePt(); renderPT();
+}
+
+// ─── Render ─────────────────────────────────────────────────────────────────
+function ptChipRow(cur, tpl) {
+  let h = '';
+  for (let v = 0; v <= 10; v++) {
+    const on = cur === v;
+    h += '<button class="' + (on ? 'on' : '') + '"' + (on ? ' style="background:' + ptPainColor(v) + '"' : '') +
+         ' onclick="' + tpl.replace('@', v) + '">' + v + '</button>';
+  }
+  return h;
+}
+function ptSetBtns(ex, rec) {
+  let h = '';
+  for (let i = 0; i < ex.sets; i++) {
+    const done = rec && rec.sets[i] && rec.sets[i].done;
+    const running = ptTimer && ptTimer.key === ex.key && ptTimer.i === i;
+    const label = running ? ptTimer.left + 's' : done ? '✓' : (ex.sec ? '▶ ' + ptFmtSec(ex.sec) : String(i + 1));
+    h += '<button class="pt-set ' + (running ? 'run' : done ? 'done' : '') + '" id="ptset-' + ex.key + '-' + i +
+         '" onclick="ptTapSet(\'' + ex.key + '\',' + i + ',' + ex.sets + ',' + ex.sec + ')">' + label + '</button>';
+  }
+  return h;
+}
+
+function renderPT() {
+  const host = document.getElementById('pt-body');
+  if (!host || !ptPlan) return;
+  const b = ptBlock(), today = todayIso(), e = ptEntry(today, false);
+  const bd = ptDaysSince(ptPlan.blockStart), total = b.weeks * 7;
+  const pct = Math.max(4, Math.min(100, Math.round(bd / total * 100)));
+  const done = ptDoneCount(e), all = ptTotalSets(b);
+  const last = ptPlan.block < PT_BLOCKS.length;
+
+  let h = '';
+
+  h += '<div class="pt-hero" style="--b-color:' + b.color + '">' +
+         '<h2>Block ' + b.n + ' · ' + b.name + '</h2>' +
+         '<div class="sub">' + escapeHtml(b.goal) + '</div>' +
+         '<div class="pt-prog"><i style="width:' + pct + '%"></i></div>' +
+         '<div class="sub">Day ' + bd + ' of ' + total + ' in this block · day ' + ptDaysSince(ptPlan.start) + ' overall · ' +
+           done + ' of ' + all + ' sets logged today</div>' +
+         '<div class="pt-blocks">' +
+           PT_BLOCKS.map(x => '<button class="' + (x.n === b.n ? 'on' : '') + '" style="--b-color:' + x.color +
+             '" onclick="ptGoBlock(' + x.n + ')">' + x.n + '. ' + x.name + '</button>').join('') +
+         '</div>' +
+       '</div>';
+
+  h += '<div class="pt-card">' +
+         '<h3>📏 This morning</h3>' +
+         '<div class="pt-det">Full fist, then measure from the middle fingertip to the crease at the base of the palm. Zero means it touches. Take it before you use the hand for anything.</div>' +
+         '<div class="pt-measure"><label for="pt-tip">Tip-to-crease (cm)</label>' +
+           '<input type="number" step="0.1" min="0" inputmode="decimal" id="pt-tip" value="' + (e && e.tip != null ? e.tip : '') +
+           '" onchange="ptSetTip(this.value)"></div>' +
+         '<div class="pt-pain"><span class="lbl">Pain at rest, out of 10</span>' + ptChipRow(e ? e.pain : null, 'ptSetDayPain(@)') + '</div>' +
+       '</div>';
+
+  for (const ex of b.ex) {
+    const rec = e ? e.exercises.find(x => x.key === ex.key) : null;
+    h += '<div class="pt-card">' +
+           '<h3>' + ex.em + ' ' + escapeHtml(ex.name) + '<span class="freq">' + escapeHtml(ex.freq) + '</span></h3>' +
+           '<div class="pt-det">' + escapeHtml(ex.det) + '</div>' +
+           '<div class="pt-sets">' + ptSetBtns(ex, rec) + '</div>' +
+           '<div class="pt-pain"><span class="lbl">Pain during, out of 10</span>' +
+             ptChipRow(rec ? rec.pain : null, "ptSetExPain('" + ex.key + "',@)") + '</div>' +
+           '<textarea class="pt-note" placeholder="Notes on ' + escapeHtml(ex.name.toLowerCase()) + '…" ' +
+             'onchange="ptExNote(\'' + ex.key + '\', this.value)">' + escapeHtml(rec ? rec.note : '') + '</textarea>' +
+         '</div>';
+  }
+
+  h += '<div class="pt-card"><h3>📝 Notes for today</h3>' +
+         '<textarea class="pt-note" style="min-height:70px" placeholder="Anything worth telling the PT…" ' +
+         'onchange="ptDayNote(this.value)">' + escapeHtml(e ? e.note : '') + '</textarea></div>';
+
+  h += '<div class="pt-card"><h3>🚪 Gate out of block ' + b.n + '</h3>' +
+         '<div class="pt-gate">' + escapeHtml(b.gate) + '</div>' +
+         (last
+           ? '<button class="btn primary" style="margin-top:11px;width:100%" onclick="ptClearGate()">✓ Cleared it — start block ' + (b.n + 1) + '</button>'
+           : '<button class="btn primary" style="margin-top:11px;width:100%" onclick="ptClearGate()">✓ Cleared it — plan complete</button>') +
+         '<div class="pt-det" style="margin:9px 0 0">If any part of the gate is not met, repeat the block rather than split the difference.</div>' +
+       '</div>';
+
+  const hist = live(ptLog).filter(x => x.date !== today).sort((a, b2) => b2.date.localeCompare(a.date)).slice(0, 14);
+  if (hist.length) {
+    h += '<div class="pt-card pt-hist"><h3>📅 Recent days</h3>' +
+      hist.map(x => {
+        const dt = new Date(x.date + 'T12:00:00');
+        const dot = x.pain != null ? '<span class="pt-dot" style="background:' + ptPainColor(x.pain) + '"></span>' : '';
+        return '<div class="row"><span class="d">' + fmtDayShort(dt) + '</span>' + dot +
+               '<span class="m">' + (x.tip != null ? x.tip + ' cm' : '—') +
+               (x.pain != null ? ' · pain ' + x.pain : '') + '</span>' +
+               '<span class="c">' + ptDoneCount(x) + ' sets</span></div>';
+      }).join('') + '</div>';
+  }
+
+  h += '<div class="pt-card"><h3>🛑 Stop rules</h3>' +
+         PT_RULES.map(r => '<div class="pt-rule"><span class="w">' + escapeHtml(r[0]) + '</span><span>' + escapeHtml(r[1]) + '</span></div>').join('') +
+       '</div>';
+
+  h += '<p class="hint" style="margin-top:4px">Started ' + ptPlan.start +
+       '. <button class="btn" style="margin-left:6px" onclick="ptRestart()">↺ Restart from today</button></p>';
+
+  host.innerHTML = h;
+}
+
 // ═════════════════════════════ CLOUD SYNC (Supabase, household) ═════════════
 // Same generic-JSONB pattern as Bright Cuts, but rows are keyed
 // (household_id, owner_key, collection): owner_key 'shared' for household data,
@@ -2896,6 +3219,13 @@ const CLOUD_COLLECTIONS = {
   staples: { owner: 'shared', kind: 'object',
     get: () => staples,
     set: v => { if (Array.isArray(v)) { staples = v; try { localStorage.setItem('trailhead-staples-v1', JSON.stringify(v)); } catch {} } } },
+  // Rehab plan + log are PERSONAL (owner 'me'), like the workout plan and log.
+  pt: { owner: 'me', kind: 'object',
+    get: () => ptPlan,
+    set: v => { if (v && v.v) { ptPlan = v; try { localStorage.setItem(PT_KEY, JSON.stringify(v)); } catch {} renderPT(); } } },
+  ptlog: { owner: 'me', kind: 'array', key: 'id',
+    get: () => ptLog,
+    set: v => { if (Array.isArray(v)) { ptLog = v; try { localStorage.setItem(PT_LOG_KEY, JSON.stringify(v)); } catch {} renderPT(); } } },
 };
 function ownerKey(coll) { return CLOUD_COLLECTIONS[coll].owner === 'me' ? cloudUser.id : 'shared'; }
 // 'map' collections (hikes/eats checkmarks) union by key, cloud wins collisions.
@@ -3019,6 +3349,7 @@ renderCalendar();
 renderHikes();
 renderEats();
 renderGrocery();
+renderPT();
 renderMaint();
 loadTimerPrefs();
 switchTab('home');
