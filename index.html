@@ -846,7 +846,8 @@ function renderCalendar() {
     return `<div class="week">
       <div class="week-label">${escapeHtml(wkLabel)} <span class="range">${range}</span>${(() => {
         const ws = weekStats(wi);
-        return ws.count ? `<span class="wk-total">${ws.count} workout${ws.count === 1 ? '' : 's'}${ws.mins ? ' · ' + fmtMins(ws.mins) : ''}</span>` : '';
+        const wd = fmtDist(ws.dist || {});
+        return ws.count ? `<span class="wk-total">${ws.count} workout${ws.count === 1 ? '' : 's'}${ws.mins ? ' · ' + fmtMins(ws.mins) : ''}${wd ? ' · ' + wd : ''}</span>` : '';
       })()}${weekTools}</div>
       <div class="days">${wk.days.map((d, di) => {
         const st = typeOf(d.t);
@@ -876,7 +877,29 @@ function sessionBucket(type) {
   return 'other';
 }
 // Stopwatch minutes if logged, else the planned/entered minutes.
+// Distance is OPTIONAL and per-sport — Michael's PT program is time-based, so
+// nothing here requires a distance. Units differ by sport (swims are yards),
+// and each log entry freezes its own unit so changing this table can never
+// rewrite history.
+const DIST = {
+  run:    { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
+  walk:   { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
+  plyo:   { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
+  pz:     { unit: 'mi', min: 1,    max: 100,  step: 1 },
+  tabata: { unit: 'mi', min: 1,    max: 100,  step: 1 },
+  swim:   { unit: 'yd', min: 25,   max: 5000, step: 25 },
+};
+function distUnitFor(type) { return DIST[type]?.unit || null; }
 function sessionMinutes(l) { return l.dur || l.min || 0; }
+// Totals have to stay separated by unit — you can't add 3 miles to 1500 yards.
+function distTotals(sessions) {
+  const by = {};
+  for (const l of sessions) if (l.dist > 0) { const u = l.distUnit || 'mi'; by[u] = (by[u] || 0) + l.dist; }
+  return by;
+}
+function fmtDist(by) {
+  return Object.entries(by).map(([u, v]) => (Math.round(v * 100) / 100) + ' ' + u).join(' · ');
+}
 function fmtMins(m) {
   if (m < 60) return m + 'm';
   const h = Math.floor(m / 60), r = m % 60;
@@ -888,6 +911,7 @@ function doneSessions(fromIso, toIso) {
 function statsFor(sessions) {
   const st = { swims: 0, bikes: 0, runs: 0, weights: 0, other: 0, mins: 0, count: 0 };
   for (const l of sessions) { st[sessionBucket(l.type)]++; st.mins += sessionMinutes(l); st.count++; }
+  st.dist = distTotals(sessions);
   return st;
 }
 function weekRangeIso(wi) { return [isoOf(dayDate(wi, 0)), isoOf(dayDate(wi, 6))]; }
@@ -1357,14 +1381,26 @@ function renderSimpleSheet(title) {
   const s = activeSession;
   openSheet(title + ' · ' + s.date, `
     <div class="simple-done">
-      <button class="timer-chip" onclick="pickSessionMin()"><span id="sess-min">${s.min}</span><span class="u"> min</span></button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="timer-chip" onclick="pickSessionMin()"><span id="sess-min">${s.min}</span><span class="u"> min</span></button>
+        ${DIST[s.type] ? `<button class="timer-chip" onclick="pickSessionDist()"><span id="sess-dist">${s.dist > 0 ? s.dist : '—'}</span><span class="u"> ${DIST[s.type].unit}</span></button>` : ''}
+      </div>
       <textarea class="note-in" id="sess-note" oninput="noteTyped()" placeholder="Optional note — how did it feel?">${escapeHtml(s.note || '')}</textarea>
       <div class="timer-go" style="width:100%">
         <button class="btn" onclick="closeSheet()">Close</button>
         <button class="btn primary" onclick="finishSession()">Mark done ✓</button>
       </div>
     </div>
-    <p class="hint" style="margin-top:10px">Time-based, never distance. Conversational unless the calendar says tabata.</p>`);
+    <p class="hint" style="margin-top:10px">${DIST[s.type] ? 'Distance is optional — log time alone if that is how you train. ' : ''}Conversational unless the calendar says tabata.</p>`);
+}
+function pickSessionDist() {
+  const cfg = DIST[activeSession.type]; if (!cfg) return;
+  const vals = [0, ...rangeVals(cfg.min, cfg.max, cfg.step)];
+  openDrum('Distance (' + cfg.unit + ')', vals, activeSession.dist || 0, v => {
+    activeSession.dist = v || 0; activeSession.distUnit = cfg.unit;
+    const el = document.getElementById('sess-dist'); if (el) el.textContent = v > 0 ? v : '—';
+    stashSession();
+  }, v => (v > 0 ? v : '—'));
 }
 function pickSessionMin() {
   openDrum('Minutes', rangeVals(5, 180, 5), activeSession.min, v => {
@@ -1396,7 +1432,9 @@ function finishSession() {
   const note = document.getElementById('sess-note'); if (note) activeSession.note = note.value.trim();
   stashSession();
   closeSheet(); renderCalendar();
-  showToast(activeSession.dur ? `Logged — ${activeSession.dur} min. Nice work. 🏔` : 'Logged. Nice work. 🏔');
+  const d = activeSession.dist > 0 ? `${activeSession.dist} ${activeSession.distUnit || 'mi'}` : '';
+  const t = [activeSession.dur ? activeSession.dur + ' min' : '', d].filter(Boolean).join(' · ');
+  showToast(t ? `Logged — ${t}. Nice work. 🏔` : 'Logged. Nice work. 🏔');
 }
 function pickSetVal(xi, si, field) {
   const set = activeSession.exercises[xi].sets[si];
@@ -1437,7 +1475,7 @@ function closeSheet() {
 function rangeVals(min, max, step) {
   const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
 }
-function openDrum(title, values, current, onPick) {
+function openDrum(title, values, current, onPick, fmt) {
   document.getElementById('drum')?.remove();
   const ov = document.createElement('div');
   ov.className = 'drum-overlay'; ov.id = 'drum';
@@ -1447,7 +1485,7 @@ function openDrum(title, values, current, onPick) {
     <div class="drum-wrap">
       <div class="drum-wheel" id="drum-wheel">
         <div class="drum-pad"></div>
-        ${values.map(v => `<div class="drum-opt" data-v="${v}">${v}</div>`).join('')}
+        ${values.map(v => `<div class="drum-opt" data-v="${v}">${fmt ? fmt(v) : v}</div>`).join('')}
         <div class="drum-pad"></div>
       </div>
       <div class="drum-band"></div>
