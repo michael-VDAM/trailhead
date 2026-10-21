@@ -347,15 +347,17 @@
     .pt-rule { display: flex; gap: 10px; padding: 9px 0; font-size: 13px; line-height: 1.5; border-top: 1px solid var(--border); }
     .pt-rule:first-child { border-top: none; padding-top: 0; }
     .pt-rule .w { font-weight: 700; flex: 0 0 44%; }
-    .pt-todo { display: flex; align-items: center; gap: 9px; padding: 9px 0; border-top: 1px solid var(--border); }
-    .pt-todo:first-of-type { border-top: none; }
-    .pt-todo .e { font-size: 16px; width: 22px; text-align: center; }
-    .pt-todo .n { font-size: 13.5px; font-weight: 600; }
-    .pt-todo .c { margin-left: auto; font-size: 11.5px; color: var(--muted2); white-space: nowrap; }
-    .pt-todo.full .c { color: var(--success); font-weight: 700; }
-    .pt-dots { display: inline-flex; gap: 4px; }
-    .pt-dots i { width: 9px; height: 9px; border-radius: 99px; background: var(--panel3); border: 1px solid var(--border); display: block; }
-    .pt-dots i.on { background: var(--success); border-color: var(--success); }
+    .pt-rounds { display: flex; flex-direction: column; gap: 7px; }
+    .pt-round { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px;
+                background: var(--panel2); border: 1px solid var(--border); }
+    .pt-round b { width: 26px; height: 26px; border-radius: 99px; background: var(--panel3); color: var(--muted2);
+                  font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pt-round span { font-size: 13.5px; font-weight: 600; }
+    .pt-round i { margin-left: auto; font-size: 11.5px; color: var(--muted2); font-style: normal; white-space: nowrap; }
+    .pt-round.done { background: var(--accent-soft); border-color: var(--success); }
+    .pt-round.done b { background: var(--success); color: #04210f; font-weight: 800; }
+    .pt-round.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .pt-round.now b { background: var(--accent); color: #241000; }
     .pt-sessband { background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 700; border-radius: 9px; padding: 10px 13px; margin: 0 0 12px; }
     .pt-finish { width: 100%; margin: 0 0 12px; padding: 14px; font-size: 15px; }
     .pt-met { margin-top: 10px; font-size: 12px; color: var(--success); font-weight: 600; }
@@ -2933,57 +2935,57 @@ function saveListAsRecipe() {
 // GATE rather than the calendar — so the block is explicit state, not a date
 // calculation. The progress bar only reports how long you've been in it.
 //
-// A day holds SESSIONS, not one flat set list: the glides are "3× daily", so
-// ticking five cycles once is a third of the day's work, not all of it. The
-// Today card counts completed sessions against each exercise's own cadence —
-// some are per-day, some per-week — which is the only way to see what is left.
+// A day is N ROUNDS of the same short routine: block 1 is "all three
+// exercises, three times a day". So the unit of work is the round, not the
+// exercise — one pain score and one note per round, nothing daily. Doing the
+// glides once is a third of the day, and the Today card says exactly that.
 //
 // Per the public-repo rule, nothing in these constants is personal: the
-// program is generic rehab content. Measurements, pain scores and notes live
-// in Supabase behind RLS.
+// program is generic rehab content. Pain scores and notes live in Supabase
+// behind RLS.
 const PT_KEY = 'trailhead-pt-v1';
 const PT_LOG_KEY = 'trailhead-ptlog-v1';
 const PT_START = '2026-10-21';
 
 const PT_BLOCKS = [
   {
-    n: 1, name: 'Settle and glide', weeks: 2, color: 'var(--swim)',
+    n: 1, name: 'Settle and glide', weeks: 2, rounds: 3, color: 'var(--swim)',
     goal: 'Keep the tendon moving without asking it for force.',
     gate: 'Five-second holds at or near painless, and nothing flaring the next morning.',
     ex: [
-      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: '3× daily', sets: 5, sec: 0, per: 'day', target: 3,
-        det: 'All four fingers together — these are hand shapes, not finger shapes. One cycle is straight → hook → straight → straight fist → straight → full fist → straight, about 3 seconds in each shape. Five cycles.' },
-      { key: 'iso', em: '⬇️', name: 'Isometric press', freq: '2–3× daily', sets: 3, sec: 5, per: 'day', target: 3,
+      { key: 'glide', em: '🖐', name: 'Tendon glides', sets: 5, sec: 0, unit: 'cycles',
+        det: 'All four fingers together — these are hand shapes, not finger shapes. One cycle is straight → hook → straight → straight fist → straight → full fist → straight, about 3 seconds in each shape.' },
+      { key: 'iso', em: '⬇️', name: 'Isometric press', sets: 3, sec: 5, unit: 'holds',
         det: 'Pads flat on a tabletop, press down and hold. Nothing moves. All four fingers in week 1; middle finger alone in week 2.' },
-      { key: 'massage', em: '👐', name: 'Gentle massage', freq: '1× daily', sets: 1, sec: 150, per: 'day', target: 1,
+      { key: 'massage', em: '👐', name: 'Gentle massage', sets: 1, sec: 150, unit: '',
         det: 'Two to three minutes over the sore spot in the palm, after the glides.' },
     ],
   },
   {
-    n: 2, name: 'Reload', weeks: 2, color: 'var(--accent)',
+    n: 2, name: 'Reload', weeks: 2, rounds: 2, color: 'var(--accent)',
     goal: 'Start asking for force through range, not just a static hold.',
     gate: 'All of it at 3/10 or less while you do it, and no next-day soreness.',
     ex: [
-      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: '2× daily', sets: 5, sec: 0, per: 'day', target: 2,
-        det: 'Same cycle, dropped to twice a day now that loading has started.' },
-      { key: 'iso2', em: '⬇️', name: 'Isometric holds', freq: '3× weekly', sets: 4, sec: 20, per: 'week', target: 3,
-        det: 'Long holds now. Build 20 s → 30 s → 45 s across the block, one step a week. Time before effort.' },
-      { key: 'band', em: '🎗', name: 'Banded finger curls', freq: '3× weekly', sets: 3, sec: 0, per: 'week', target: 3,
-        det: 'Band over the fingers, curl closed against it. 6–8 controlled reps. Reps before resistance.' },
-      { key: 'ecc', em: '↩️', name: 'Slow eccentrics', freq: '3× weekly', sets: 3, sec: 0, per: 'week', target: 3,
-        det: 'From closed, fight the band open over 5 seconds. 6–10 reps. Open hand only — never a crimp.' },
+      { key: 'glide', em: '🖐', name: 'Tendon glides', sets: 5, sec: 0, unit: 'cycles',
+        det: 'Same cycle as block 1. Every round.' },
+      { key: 'iso2', em: '⬇️', name: 'Isometric holds', sets: 4, sec: 20, unit: 'holds',
+        det: 'Long holds now. Build 20 s → 30 s → 45 s across the block, one step a week. Loading rounds only — three days a week, not every day.' },
+      { key: 'band', em: '🎗', name: 'Banded finger curls', sets: 3, sec: 0, unit: 'sets',
+        det: 'Band over the fingers, curl closed against it. 6–8 controlled reps. Loading rounds only.' },
+      { key: 'ecc', em: '↩️', name: 'Slow eccentrics', sets: 3, sec: 0, unit: 'sets',
+        det: 'From closed, fight the band open over 5 seconds. 6–10 reps. Open hand only — never a crimp. Loading rounds only.' },
     ],
   },
   {
-    n: 3, name: 'Rebuild', weeks: 2, color: 'var(--success)',
+    n: 3, name: 'Rebuild', weeks: 2, rounds: 1, color: 'var(--success)',
     goal: 'Back to real grip demand.',
     gate: 'Full grip, no pain during or after. Clamp handle at working force.',
     ex: [
-      { key: 'glide', em: '🖐', name: 'Tendon glides', freq: '1× daily', sets: 5, sec: 0, per: 'day', target: 1,
+      { key: 'glide', em: '🖐', name: 'Tendon glides', sets: 5, sec: 0, unit: 'cycles',
         det: 'Keep them going as a warm-up.' },
-      { key: 'load', em: '💪', name: 'Loaded grip work', freq: '2× weekly max', sets: 4, sec: 30, per: 'week', target: 2,
-        det: '48–72 hours between sessions. Half-crimp before full crimp, and only once it has been cleared.' },
-      { key: 'shop', em: '🪵', name: 'Shop task, graded', freq: '2× weekly', sets: 1, sec: 0, per: 'week', target: 2,
+      { key: 'load', em: '💪', name: 'Loaded grip work', sets: 4, sec: 30, unit: 'holds',
+        det: 'Twice a week at most, 48–72 hours apart. Half-crimp before full crimp, and only once it has been cleared.' },
+      { key: 'shop', em: '🪵', name: 'Shop task, graded', sets: 1, sec: 0, unit: '',
         det: 'Back in order of demand: carrying, then sanding, then clamping, then hand planing.' },
     ],
   },
@@ -2993,11 +2995,14 @@ const PT_RULES = [
   ['Pain above 3/10 mid-set', 'Stop that set. Cut the hold or load by a quarter, then carry on.'],
   ['Pain above 5/10 at any point', 'Stop the session.'],
   ['Still sore the next morning', "Skip a day, then repeat last week's dose. Do not advance."],
-  ['Tip-to-crease worse two days running', 'Stop loading. Back to glides only, and message the PT.'],
+  ['Closing the hand is worse than yesterday', 'Stop loading. Back to glides only, and message the PT.'],
   ['Swelling, or it wakes you at night', 'Stop, message the PT.'],
   ['Any new catching, clicking or locking', 'Stop immediately and message the PT.'],
   ['The nodule gets bigger or more tender', 'Message the PT.'],
 ];
+
+const PT_EX_NAMES = {};
+for (const b of PT_BLOCKS) for (const x of b.ex) PT_EX_NAMES[x.key] = x.name;
 
 let ptPlan = null, ptLog = [], ptTimer = null, ptCalMonth = null;
 
@@ -3011,15 +3016,30 @@ function ptDaysSince(iso) { return Math.floor((new Date(todayIso() + 'T12:00:00'
 function ptPainColor(v) { return v <= 3 ? 'var(--success)' : v <= 5 ? 'var(--tabata)' : 'var(--danger)'; }
 function ptFmtSec(s) { return s >= 60 ? Math.round(s / 60) + ' min' : s + 's'; }
 
-// ─── Day + session shape ────────────────────────────────────────────────────
-// v1 stored one flat `exercises` list per day, which could not express "I did
-// the glides three times today". v2 wraps that list as session 1 and appends.
+// ─── Day + round shape ──────────────────────────────────────────────────────
+// v1 was one flat exercise list per day, which could not say "I did the
+// routine twice". v2 wrapped that as round 1. v3 moves pain and notes UP to
+// the round — one of each per round — and drops the daily measurement, which
+// was more admin than it was worth.
 function ptMigrateEntry(e) {
-  if (!e || e.v === 2) return false;
-  e.sessions = e.exercises && e.exercises.length
-    ? [{ n: 1, at: e.ts || Date.now(), exercises: e.exercises }]
-    : (e.sessions || []);
-  delete e.exercises; e.v = 2;
+  if (!e || e.v === 3) return false;
+  if (e.v !== 2) {
+    // A v1 day had no concept of an open round, so a wrapped one is finished.
+    e.sessions = e.exercises && e.exercises.length
+      ? [{ n: 1, at: e.ts || Date.now(), done: true, endedAt: e.ts || Date.now(), exercises: e.exercises }]
+      : (e.sessions || []);
+    delete e.exercises; e.v = 2;
+  }
+  for (const s of (e.sessions || [])) {
+    const pains = (s.exercises || []).map(x => x.pain).filter(p => p != null);
+    if (s.pain == null && pains.length) s.pain = Math.max(...pains);   // worst of the round
+    const notes = (s.exercises || []).filter(x => x.note && x.note.trim())
+      .map(x => (PT_EX_NAMES[x.key] || x.key) + ': ' + x.note.trim());
+    if (!s.note && notes.length) s.note = notes.join('\n');
+    for (const x of (s.exercises || [])) { delete x.pain; delete x.note; }
+  }
+  delete e.tip; delete e.pain; delete e.note;
+  e.v = 3;
   return true;
 }
 function ptMigrateLog() {
@@ -3030,64 +3050,45 @@ function ptMigrateLog() {
 function ptEntry(date, create) {
   let e = live(ptLog).find(x => x.date === date);
   if (!e && create) {
-    e = { v: 2, id: 'pt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-          date, block: ptPlan.block, sessions: [], tip: null, pain: null, note: '', ts: Date.now() };
+    e = { v: 3, id: 'pt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          date, block: ptPlan.block, sessions: [], ts: Date.now() };
     ptLog.push(e);
   }
   if (e) ptMigrateEntry(e);
   return e;
 }
-function ptCurSession(e, create) {
+function ptCurRound(e, create) {
   if (!e) return null;
   e.sessions = e.sessions || [];
   let s = e.sessions[e.sessions.length - 1];
-  if ((!s || s.done) && create) { s = { n: e.sessions.length + 1, at: Date.now(), exercises: [] }; e.sessions.push(s); }
+  if ((!s || s.done) && create) { s = { n: e.sessions.length + 1, at: Date.now(), exercises: [], pain: null, note: '' }; e.sessions.push(s); }
   return s || null;
 }
-function ptSessEx(sess, key, nsets) {
+function ptRoundEx(sess, key, nsets) {
   let x = sess.exercises.find(a => a.key === key);
-  if (!x) { x = { key, sets: [], pain: null, note: '' }; sess.exercises.push(x); }
+  if (!x) { x = { key, sets: [] }; sess.exercises.push(x); }
   while (x.sets.length < nsets) x.sets.push({ done: false });
   return x;
 }
-// An exercise counts for a session only when every set in it is ticked.
-function ptExComplete(sess, ex) {
-  const x = (sess.exercises || []).find(a => a.key === ex.key);
-  return !!x && x.sets.length >= ex.sets && x.sets.slice(0, ex.sets).every(s => s.done);
-}
-function ptSessionsWith(e, ex) { return ((e && e.sessions) || []).filter(s => ptExComplete(s, ex)).length; }
-function ptWeekDates() {
-  const out = []; const d = new Date(todayIso() + 'T12:00:00');
-  for (let i = 0; i < 7; i++) { out.push(isoOf(d)); d.setDate(d.getDate() - 1); }
-  return out;
-}
-// How many sessions of this exercise are logged in its own cadence window.
-function ptProgress(ex) {
-  if (ex.per === 'week') {
-    return ptWeekDates().reduce((n, d) => n + ptSessionsWith(ptEntry(d, false), ex), 0);
-  }
-  return ptSessionsWith(ptEntry(todayIso(), false), ex);
-}
-// Fraction of a day's PER-DAY work that got done — drives the calendar colour.
+function ptRoundTouched(s) { return !!s && (s.exercises || []).some(x => x.sets.some(v => v.done)); }
+function ptRoundsDone(e) { return ((e && e.sessions) || []).filter(s => s.done).length; }
 function ptDayPct(e) {
   if (!e) return 0;
-  const daily = ptBlockOf(e).ex.filter(x => x.per === 'day');
-  let got = 0, want = 0;
-  for (const ex of daily) { want += ex.target; got += Math.min(ex.target, ptSessionsWith(e, ex)); }
-  return want ? got / want : 0;
+  const want = ptBlockOf(e).rounds || 1;
+  return Math.min(1, ptRoundsDone(e) / want);
 }
 function ptDayColor(p) { return p >= 1 ? 'var(--success)' : p > 0 ? 'var(--tabata)' : 'var(--muted2)'; }
 
 // ─── Logging ────────────────────────────────────────────────────────────────
 function ptTapSet(key, i, nsets, sec) {
   if (ptTimer && ptTimer.key === key && ptTimer.i === i) { ptStopTimer(); return; }
-  const s = ptCurSession(ptEntry(todayIso(), true), true), x = ptSessEx(s, key, nsets);
+  const x = ptRoundEx(ptCurRound(ptEntry(todayIso(), true), true), key, nsets);
   if (x.sets[i].done) { x.sets[i].done = false; delete x.sets[i].at; ptCommit(); return; }
   if (sec > 0) { ptStartTimer(key, i, nsets, sec); return; }
   ptMarkSet(key, i, nsets);
 }
 function ptMarkSet(key, i, nsets) {
-  const s = ptCurSession(ptEntry(todayIso(), true), true), x = ptSessEx(s, key, nsets);
+  const x = ptRoundEx(ptCurRound(ptEntry(todayIso(), true), true), key, nsets);
   x.sets[i].done = true; x.sets[i].at = Date.now();
   ptCommit();
 }
@@ -3117,27 +3118,22 @@ function ptStopTimer(quiet) {
   clearInterval(ptTimer.iv); ptTimer = null; keepAwake(false);
   if (!quiet) renderPT();
 }
-function ptFinishSession() {
-  const e = ptEntry(todayIso(), true), s = ptCurSession(e, false);
-  if (!s || !s.exercises.some(x => x.sets.some(v => v.done))) { showToast('Nothing logged in this session yet'); return; }
+function ptFinishRound() {
+  const e = ptEntry(todayIso(), true), s = ptCurRound(e, false);
+  if (!ptRoundTouched(s)) { showToast('Nothing logged in this round yet'); return; }
   s.done = true; s.endedAt = Date.now();
   touch(e); savePtLog(); renderPT();
-  showToast('Session ' + s.n + ' logged');
+  const left = (ptBlock().rounds || 1) - ptRoundsDone(e);
+  showToast(left > 0 ? 'Round ' + s.n + ' logged — ' + left + ' to go today' : 'Round ' + s.n + ' logged — that is the day done');
 }
-function ptSetDayPain(v) { const e = ptEntry(todayIso(), true); e.pain = e.pain === v ? null : v; ptCommit(); }
-function ptSetExPain(key, v) {
-  const s = ptCurSession(ptEntry(todayIso(), true), true), x = ptSessEx(s, key, 0);
-  x.pain = x.pain === v ? null : v; ptCommit();
+function ptSetRoundPain(v) {
+  const s = ptCurRound(ptEntry(todayIso(), true), true);
+  s.pain = s.pain === v ? null : v; ptCommit();
 }
-function ptSetTip(val) {
-  const e = ptEntry(todayIso(), true);
-  const n = parseFloat(val); e.tip = isNaN(n) ? null : n; ptCommit();
+function ptRoundNote(val) {
+  const s = ptCurRound(ptEntry(todayIso(), true), true);
+  s.note = val; const e = ptEntry(todayIso(), true); touch(e); savePtLog();
 }
-function ptExNote(key, val) {
-  const s = ptCurSession(ptEntry(todayIso(), true), true), x = ptSessEx(s, key, 0);
-  x.note = val; const e = ptEntry(todayIso(), true); touch(e); savePtLog();
-}
-function ptDayNote(val) { const e = ptEntry(todayIso(), true); e.note = val; touch(e); savePtLog(); }
 
 function ptClearGate() {
   if (ptPlan.block >= PT_BLOCKS.length) { showToast('That was the last block — this one is done'); return; }
@@ -3179,23 +3175,19 @@ function ptSetBtns(ex, rec) {
   }
   return h;
 }
-function ptDots(got, target) {
-  let h = '';
-  for (let i = 0; i < target; i++) h += '<i class="' + (i < got ? 'on' : '') + '"></i>';
-  if (got > target) h += '<i class="on"></i>';
-  return '<span class="pt-dots">' + h + '</span>';
-}
+function ptHhmm(ts) { return ts ? new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''; }
 
 function renderPT() {
   const host = document.getElementById('pt-body');
   if (!host || !ptPlan) return;
-  const b = ptBlock(), today = todayIso(), e = ptEntry(today, false);
+  const b = ptBlock(), e = ptEntry(todayIso(), false);
   const bd = ptDaysSince(ptPlan.blockStart), total = b.weeks * 7;
   const pct = Math.max(4, Math.min(100, Math.round(bd / total * 100)));
-  const sess = e && e.sessions ? e.sessions : [];
+  const sess = (e && e.sessions) || [];
   const cur = sess.length && !sess[sess.length - 1].done ? sess[sess.length - 1] : null;
-  const doneSessions = sess.filter(s => s.done).length;
-  const sessNo = cur ? cur.n : doneSessions + 1;
+  const doneN = ptRoundsDone(e), want = b.rounds || 1;
+  const roundNo = cur ? cur.n : doneN + 1;
+  const allDone = doneN >= want && !ptRoundTouched(cur);
 
   let h = '';
 
@@ -3210,52 +3202,42 @@ function renderPT() {
          '</div>' +
        '</div>';
 
-  // ── Today at a glance: what is left, per exercise, in its own cadence.
-  h += '<div class="pt-card"><h3>📋 Where today stands<span class="freq">' + doneSessions + ' session' +
-         (doneSessions === 1 ? '' : 's') + ' logged</span></h3>';
-  for (const ex of b.ex) {
-    const got = ptProgress(ex), full = got >= ex.target;
-    h += '<div class="pt-todo' + (full ? ' full' : '') + '">' +
-           '<span class="e">' + ex.em + '</span>' +
-           '<span class="n">' + escapeHtml(ex.name) + '</span>' +
-           ptDots(got, ex.target) +
-           '<span class="c">' + got + ' of ' + ex.target + (ex.per === 'week' ? ' this week' : ' today') +
-             (full ? ' ✓' : '') + '</span>' +
-         '</div>';
+  // ── Today's plan: the whole routine, N times. The round is the unit.
+  h += '<div class="pt-card"><h3>📋 Today’s plan<span class="freq">' + doneN + ' of ' + want + ' rounds</span></h3>' +
+       '<div class="pt-det">' + b.ex.map(x => x.em + ' ' + escapeHtml(x.name)).join(' &nbsp;·&nbsp; ') +
+       ' — all of it, <b>' + want + '× a day</b>.</div><div class="pt-rounds">';
+  for (let i = 1; i <= Math.max(want, sess.length); i++) {
+    const s = sess.find(x => x.n === i);
+    const state = s && s.done ? 'done' : (s && ptRoundTouched(s)) || (!s && i === roundNo) ? 'now' : '';
+    const sub = s && s.done ? ptHhmm(s.endedAt || s.at) : state === 'now' ? 'in progress' : 'to do';
+    h += '<div class="pt-round ' + state + '"><b>' + (s && s.done ? '✓' : i) + '</b><span>Round ' + i +
+         (i > want ? ' (extra)' : '') + '</span><i>' + sub +
+         (s && s.done && s.pain != null ? ' · pain ' + s.pain : '') + '</i></div>';
   }
-  h += '</div>';
+  h += '</div>' + (allDone ? '<div class="pt-met">✓ All ' + want + ' rounds done today. Anything more is a bonus — tap a set to start another.</div>' : '') + '</div>';
 
-  h += '<div class="pt-card">' +
-         '<h3>📏 This morning</h3>' +
-         '<div class="pt-det">Full fist, then measure from the middle fingertip to the crease at the base of the palm. Zero means it touches. Take it before you use the hand for anything.</div>' +
-         '<div class="pt-measure"><label for="pt-tip">Tip-to-crease (cm)</label>' +
-           '<input type="number" step="0.1" min="0" inputmode="decimal" id="pt-tip" value="' + (e && e.tip != null ? e.tip : '') +
-           '" onchange="ptSetTip(this.value)"></div>' +
-         '<div class="pt-pain"><span class="lbl">Pain at rest, out of 10</span>' + ptChipRow(e ? e.pain : null, 'ptSetDayPain(@)') + '</div>' +
-       '</div>';
-
-  h += '<div class="pt-sessband">Session ' + sessNo + (doneSessions ? ' · ' + doneSessions + ' already logged today' : ' · first of the day') + '</div>';
+  h += '<div class="pt-sessband">Round ' + roundNo + ' of ' + want +
+       (doneN ? ' · ' + doneN + ' already done today' : ' · first of the day') + '</div>';
 
   for (const ex of b.ex) {
     const rec = cur ? cur.exercises.find(x => x.key === ex.key) : null;
-    const got = ptProgress(ex);
     h += '<div class="pt-card">' +
-           '<h3>' + ex.em + ' ' + escapeHtml(ex.name) + '<span class="freq">' + escapeHtml(ex.freq) + '</span></h3>' +
+           '<h3>' + ex.em + ' ' + escapeHtml(ex.name) +
+             (ex.unit ? '<span class="freq">' + ex.sets + ' ' + ex.unit + '</span>' : '') + '</h3>' +
            '<div class="pt-det">' + escapeHtml(ex.det) + '</div>' +
            '<div class="pt-sets">' + ptSetBtns(ex, rec) + '</div>' +
-           (got >= ex.target ? '<div class="pt-met">✓ Already met for ' + (ex.per === 'week' ? 'the week' : 'today') + ' — extra is fine, just log it.</div>' : '') +
-           '<div class="pt-pain"><span class="lbl">Pain during, out of 10</span>' +
-             ptChipRow(rec ? rec.pain : null, "ptSetExPain('" + ex.key + "',@)") + '</div>' +
-           '<textarea class="pt-note" placeholder="Notes on ' + escapeHtml(ex.name.toLowerCase()) + '…" ' +
-             'onchange="ptExNote(\'' + ex.key + '\', this.value)">' + escapeHtml(rec ? rec.note : '') + '</textarea>' +
          '</div>';
   }
 
-  h += '<button class="btn primary pt-finish" onclick="ptFinishSession()">✓ Finish session ' + sessNo + '</button>';
+  // ── One pain score and one note for the round, then close it.
+  h += '<div class="pt-card"><h3>How did round ' + roundNo + ' go?</h3>' +
+         '<div class="pt-pain"><span class="lbl">Worst pain this round, out of 10</span>' +
+           ptChipRow(cur ? cur.pain : null, 'ptSetRoundPain(@)') + '</div>' +
+         '<textarea class="pt-note" style="min-height:64px" placeholder="Which positions, how it felt, anything for the PT…" ' +
+           'onchange="ptRoundNote(this.value)">' + escapeHtml(cur ? (cur.note || '') : '') + '</textarea>' +
+       '</div>';
 
-  h += '<div class="pt-card"><h3>📝 Notes for today</h3>' +
-         '<textarea class="pt-note" style="min-height:70px" placeholder="Anything worth telling the PT…" ' +
-         'onchange="ptDayNote(this.value)">' + escapeHtml(e ? e.note : '') + '</textarea></div>';
+  h += '<button class="btn primary pt-finish" onclick="ptFinishRound()">✓ Finish round ' + roundNo + '</button>';
 
   h += ptCalHtml();
 
@@ -3289,11 +3271,12 @@ function ptCalHtml() {
     const iso = yy + '-' + String(mm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const e = ptEntry(iso, false), p = ptDayPct(e);
     const started = iso >= ptPlan.start && iso <= todayIso();
-    const n = e ? (e.sessions || []).filter(s => s.done || s.exercises.some(x => x.sets.some(v => v.done))).length : 0;
+    const n = ptRoundsDone(e);
+    const want = e ? (ptBlockOf(e).rounds || 1) : 0;
     cells += '<div class="mcell' + (iso === todayIso() ? ' today' : '') + '"' +
       (e ? ' style="cursor:pointer" onclick="ptOpenDay(\'' + iso + '\')"' : '') + '>' +
       '<div class="dn">' + d + '</div>' +
-      (e ? '<div class="pt-cdot" style="background:' + ptDayColor(p) + '"></div><div class="pt-cn">' + n + '</div>'
+      (e ? '<div class="pt-cdot" style="background:' + ptDayColor(p) + '"></div><div class="pt-cn">' + n + '/' + want + '</div>'
          : started ? '<div class="pt-cmiss">·</div>' : '') +
       '</div>';
   }
@@ -3303,9 +3286,9 @@ function ptCalHtml() {
     '<button class="btn" onclick="ptCalStep(1)">›</button></div>' +
     '<div class="mcal-dow">' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x => '<div>' + x + '</div>').join('') + '</div>' +
     '<div class="mcal">' + cells + '</div>' +
-    '<div class="pt-legend"><span><i style="background:var(--success)"></i>full day</span>' +
-      '<span><i style="background:var(--tabata)"></i>partial</span>' +
-      '<span><i style="background:var(--muted2)"></i>logged, none complete</span></div></div>';
+    '<div class="pt-legend"><span><i style="background:var(--success)"></i>all rounds</span>' +
+      '<span><i style="background:var(--tabata)"></i>some</span>' +
+      '<span><i style="background:var(--muted2)"></i>none finished</span></div></div>';
 }
 function ptCalStep(n) {
   const [yy, mm] = ptCalMonth.split('-').map(Number);
@@ -3316,22 +3299,20 @@ function ptCalStep(n) {
 function ptOpenDay(iso) {
   const e = ptEntry(iso, false); if (!e) return;
   const b = ptBlockOf(e);
-  let h = '<div class="pt-det">Block ' + b.n + ' · ' + b.name +
-    (e.tip != null ? ' · tip-to-crease ' + e.tip + ' cm' : '') +
-    (e.pain != null ? ' · pain at rest ' + e.pain : '') + '</div>';
+  let h = '<div class="pt-det">Block ' + b.n + ' · ' + b.name + ' · ' +
+    ptRoundsDone(e) + ' of ' + (b.rounds || 1) + ' rounds done</div>';
   (e.sessions || []).forEach(s => {
-    const when = s.at ? new Date(s.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
-    h += '<div class="pt-card" style="margin:10px 0 0"><h3>Session ' + s.n + '<span class="freq">' + when + '</span></h3>';
+    h += '<div class="pt-card" style="margin:10px 0 0"><h3>Round ' + s.n +
+         '<span class="freq">' + ptHhmm(s.endedAt || s.at) + (s.done ? '' : ' · unfinished') + '</span></h3>';
+    if (s.pain != null) h += '<div class="pt-det" style="margin-bottom:8px">Worst pain this round: <b style="color:' + ptPainColor(s.pain) + '">' + s.pain + '/10</b></div>';
     s.exercises.forEach(x => {
       const ex = b.ex.find(a => a.key === x.key);
-      const done = x.sets.filter(v => v.done).length;
       h += '<div class="pt-rule"><span class="w">' + (ex ? ex.em + ' ' + escapeHtml(ex.name) : escapeHtml(x.key)) + '</span>' +
-        '<span>' + done + '/' + x.sets.length + ' sets' + (x.pain != null ? ' · pain ' + x.pain : '') +
-           (x.note ? '<br><span style="color:var(--muted)">' + escapeHtml(x.note) + '</span>' : '') + '</span></div>';
+           '<span>' + x.sets.filter(v => v.done).length + ' of ' + x.sets.length + '</span></div>';
     });
+    if (s.note) h += '<div class="pt-det" style="margin:10px 0 0;white-space:pre-wrap">' + escapeHtml(s.note) + '</div>';
     h += '</div>';
   });
-  if (e.note) h += '<div class="pt-card" style="margin:10px 0 0"><h3>📝 Notes</h3><div class="pt-det">' + escapeHtml(e.note) + '</div></div>';
   openSheet(new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }), h);
 }
 
