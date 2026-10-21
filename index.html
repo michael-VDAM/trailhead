@@ -882,9 +882,9 @@ function sessionBucket(type) {
 // and each log entry freezes its own unit so changing this table can never
 // rewrite history.
 const DIST = {
-  run:    { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
-  walk:   { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
-  plyo:   { unit: 'mi', min: 0.25, max: 26.2, step: 0.25 },
+  run:    { unit: 'mi', min: 0.25, max: 30, step: 0.25 },
+  walk:   { unit: 'mi', min: 0.25, max: 30, step: 0.25 },
+  plyo:   { unit: 'mi', min: 0.25, max: 30, step: 0.25 },
   pz:     { unit: 'mi', min: 1,    max: 100,  step: 1 },
   tabata: { unit: 'mi', min: 1,    max: 100,  step: 1 },
   swim:   { unit: 'yd', min: 25,   max: 5000, step: 25 },
@@ -1473,7 +1473,7 @@ function closeSheet() {
 }
 
 function rangeVals(min, max, step) {
-  const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 10) / 10); return out;
+  const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 100) / 100); return out;
 }
 function openDrum(title, values, current, onPick, fmt) {
   document.getElementById('drum')?.remove();
