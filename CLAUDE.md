@@ -33,6 +33,14 @@ Tables (created 2026-08-09, migration `trailhead_household_schema`):
 - **Progression rules live in the docs, not the app** (PT owns them): +5 lb after 2 clean sessions, RDL/thrusters +10, weaker side sets single-leg loads, stop 2 reps shy of failure.
 - Source program: `~/Downloads/fitness-program.md`, `fitness-context-for-agents.md`, `Baseline Fitness Program.xlsx`. PT is the authority; program docs update in Downloads.
 
+## Rehab module (added 2026-10-21)
+Finger flexor rehab — three blocks over six weeks, seeded from Michael's PT plan (PDF in `~/Downloads/`). **The PT is the authority**, same as the Workout program.
+- **The block is explicit state, not a date calculation** (`ptPlan.block` + `blockStart`). You advance by clearing the **gate**; the progress bar only reports how long you've been in the block. `ptClearGate()` stamps `ptPlan.gates` and restarts `blockStart` from today. Do NOT "fix" this into week arithmetic — advancing on the calendar instead of on criteria is the one thing the plan is explicitly against.
+- **One log entry per DAY**, mirroring the workout log's shape: `{id, date, block, exercises:[{key, sets:[{done, at}], pain, note}], tip, pain, note, ts}`. `tip` is tip-to-crease in cm (middle fingertip to the distal palmar crease, 0 = touching) — the objective range number the PT gets.
+- **Timed holds own the set button.** `ptStartTimer()` counts down inside the button's own label, beeps (`beepBeep()`) + vibrates, then marks the set done — one tap per set, not two. Holds a wake lock while running.
+- Collections `pt` (object) + `ptlog` (array, key `id`), both `owner:'me'` like the workout plan/log.
+- `PT_BLOCKS` / `PT_RULES` carry generic rehab content only, per convention 7 — no injury detail in committed constants.
+
 ## Hikes + Eats modules (added 2026-08-09)
 - **HIKES_DB**: 59 researched trails ≤2h from The Nations (26 from their sheet, verified + corrected; 33 new finds). Fields: distance/gain/difficulty/drive-min/payoff/water tags/dogs/AllTrails URL/permit notes. Drive times from 37209.
 - **EATS_DB**: 152 Nashville restaurants — their "Self Made" list (with personal `us:` notes), Lucia's guide, and Aug-2026 research (Nations-heavy). Status o/c (Nashville closures tracked: Joyland, Pelican & Pig, Margot, Burger Up, 404 Kitchen…), Michelin/Beard flags.
