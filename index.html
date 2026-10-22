@@ -328,6 +328,10 @@
     .pt-card h3 .freq { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted2); background: var(--panel3); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
     .pt-det { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 11px; }
     .pt-sets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pt-sets + .pt-setlbl { margin-top: 12px; }
+    .pt-setlbl { display: flex; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted2); margin-bottom: 6px; }
+    .pt-setlbl.done { color: var(--success); }
+    .pt-setlbl i { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted2); }
     .pt-set { min-width: 60px; height: 48px; border-radius: 10px; border: 2px solid var(--border); background: var(--panel2); color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 10px; }
     .pt-set.done { background: var(--success); border-color: var(--success); color: #04210f; }
     .pt-set.run { background: var(--accent); border-color: var(--accent); color: #241000; }
@@ -843,7 +847,14 @@ function fmtDayShort(dt) { return (dt.getMonth() + 1) + '/' + dt.getDate(); }
 function dayDate(w, d) { const dt = new Date(plan.startDate + 'T12:00:00'); dt.setDate(dt.getDate() + w * 7 + d); return dt; }
 function isoOf(dt) { return dt.toISOString().slice(0, 10); }
 function fmtClock(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-const todayIso = () => isoOf(new Date());
+// LOCAL date, deliberately not isoOf(new Date()). toISOString() is UTC, so
+// west of Greenwich every evening rolls over early — in Nashville anything
+// logged after 7pm landed on tomorrow's date. isoOf() stays UTC-safe because
+// everything else anchors dates at T12:00:00 noon before converting.
+const todayIso = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
 
 // Most recent logged weight for an exercise (the whole point of the app).
 function lastWeights(exName) {
@@ -2953,10 +2964,10 @@ const PT_BLOCKS = [
     goal: 'Keep the tendon moving without asking it for force.',
     gate: 'Five-second holds at or near painless, and nothing flaring the next morning.',
     ex: [
-      { key: 'glide', em: '🖐', name: 'Tendon glides', sets: 5, sec: 0, unit: 'cycles',
-        det: 'All four fingers together — these are hand shapes, not finger shapes. One cycle is straight → hook → straight → straight fist → straight → full fist → straight, about 3 seconds in each shape.' },
-      { key: 'iso', em: '⬇️', name: 'Isometric press', sets: 3, sec: 5, unit: 'holds',
-        det: 'Pads flat on a tabletop, press down and hold. Nothing moves. All four fingers in week 1; middle finger alone in week 2.' },
+      { key: 'glide', em: '🖐', name: 'Tendon glides', sets: 5, groups: 3, sec: 0, unit: 'cycles',
+        det: 'All four fingers together — these are hand shapes, not finger shapes. One cycle is straight → hook → straight → straight fist → straight → full fist → straight, about 3 seconds in each shape.\n\nThree sets of five, resting a minute or two between sets.' },
+      { key: 'iso', em: '⬇️', name: 'Isometric press', sets: 3, groups: 3, sec: 5, unit: 'holds',
+        det: 'Pads flat on a tabletop, press down and hold. Nothing moves. All four fingers in week 1; middle finger alone in week 2.\n\nThree sets of three, same rest between sets.' },
       { key: 'massage', em: '👐', name: 'Gentle massage', sets: 1, sec: 150, unit: '',
         det: 'Two to three minutes over the sore spot in the palm, after the glides.' },
     ],
@@ -3015,6 +3026,7 @@ function ptBlockOf(e) { return PT_BLOCKS[Math.min(PT_BLOCKS.length - 1, Math.max
 function ptDaysSince(iso) { return Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(iso + 'T12:00:00')) / 864e5) + 1; }
 function ptPainColor(v) { return v <= 3 ? 'var(--success)' : v <= 5 ? 'var(--tabata)' : 'var(--danger)'; }
 function ptFmtSec(s) { return s >= 60 ? Math.round(s / 60) + ' min' : s + 's'; }
+function ptExTotal(ex) { return ex.sets * (ex.groups || 1); }
 
 // ─── Day + round shape ──────────────────────────────────────────────────────
 // v1 was one flat exercise list per day, which could not say "I did the
@@ -3118,6 +3130,25 @@ function ptStopTimer(quiet) {
   clearInterval(ptTimer.iv); ptTimer = null; keepAwake(false);
   if (!quiet) renderPT();
 }
+// "I did it, I just didn't tick it." Fills a past day with a complete round,
+// flagged backfilled so the day sheet never passes it off as live logging.
+function ptAddPastRound(iso) {
+  if (iso > todayIso()) return;
+  const e = ptEntry(iso, true), b = ptBlockOf(e);
+  const at = new Date(iso + 'T12:00:00').getTime();
+  e.sessions = e.sessions || [];
+  e.sessions.push({
+    n: e.sessions.length + 1, at, done: true, endedAt: at, backfilled: true, pain: null, note: '',
+    exercises: b.ex.map(x => ({ key: x.key, sets: Array.from({ length: ptExTotal(x) }, () => ({ done: true, at })) })),
+  });
+  touch(e); savePtLog(); renderPT(); ptOpenDay(iso);
+}
+function ptMarkRoundDone(iso, n) {
+  const e = ptEntry(iso, false); if (!e) return;
+  const s = (e.sessions || []).find(x => x.n === n); if (!s) return;
+  s.done = true; s.endedAt = s.endedAt || s.at;
+  touch(e); savePtLog(); renderPT(); ptOpenDay(iso);
+}
 function ptFinishRound() {
   const e = ptEntry(todayIso(), true), s = ptCurRound(e, false);
   if (!ptRoundTouched(s)) { showToast('Nothing logged in this round yet'); return; }
@@ -3165,13 +3196,24 @@ function ptChipRow(cur, tpl) {
   return h;
 }
 function ptSetBtns(ex, rec) {
+  const total = ptExTotal(ex), groups = ex.groups || 1;
   let h = '';
-  for (let i = 0; i < ex.sets; i++) {
-    const done = rec && rec.sets[i] && rec.sets[i].done;
-    const running = ptTimer && ptTimer.key === ex.key && ptTimer.i === i;
-    const label = running ? ptTimer.left + 's' : done ? '✓' : (ex.sec ? '▶ ' + ptFmtSec(ex.sec) : String(i + 1));
-    h += '<button class="pt-set ' + (running ? 'run' : done ? 'done' : '') + '" id="ptset-' + ex.key + '-' + i +
-         '" onclick="ptTapSet(\'' + ex.key + '\',' + i + ',' + ex.sets + ',' + ex.sec + ')">' + label + '</button>';
+  for (let g = 0; g < groups; g++) {
+    if (groups > 1) {
+      const gDone = Array.from({ length: ex.sets }, (_, k) => rec && rec.sets[g * ex.sets + k] && rec.sets[g * ex.sets + k].done).every(Boolean);
+      h += '<div class="pt-setlbl' + (gDone ? ' done' : '') + '">Set ' + (g + 1) + ' of ' + groups +
+           (g > 0 ? '<i>rest 1–2 min first</i>' : '') + '</div>';
+    }
+    h += '<div class="pt-sets">';
+    for (let k = 0; k < ex.sets; k++) {
+      const i = g * ex.sets + k;
+      const done = rec && rec.sets[i] && rec.sets[i].done;
+      const running = ptTimer && ptTimer.key === ex.key && ptTimer.i === i;
+      const label = running ? ptTimer.left + 's' : done ? '✓' : (ex.sec ? '▶ ' + ptFmtSec(ex.sec) : String(k + 1));
+      h += '<button class="pt-set ' + (running ? 'run' : done ? 'done' : '') + '" id="ptset-' + ex.key + '-' + i +
+           '" onclick="ptTapSet(\'' + ex.key + '\',' + i + ',' + total + ',' + ex.sec + ')">' + label + '</button>';
+    }
+    h += '</div>';
   }
   return h;
 }
@@ -3223,9 +3265,9 @@ function renderPT() {
     const rec = cur ? cur.exercises.find(x => x.key === ex.key) : null;
     h += '<div class="pt-card">' +
            '<h3>' + ex.em + ' ' + escapeHtml(ex.name) +
-             (ex.unit ? '<span class="freq">' + ex.sets + ' ' + ex.unit + '</span>' : '') + '</h3>' +
+             (ex.unit ? '<span class="freq">' + ((ex.groups || 1) > 1 ? ex.groups + ' × ' + ex.sets : ex.sets) + ' ' + ex.unit + '</span>' : '') + '</h3>' +
            '<div class="pt-det">' + escapeHtml(ex.det) + '</div>' +
-           '<div class="pt-sets">' + ptSetBtns(ex, rec) + '</div>' +
+           ptSetBtns(ex, rec) +
          '</div>';
   }
 
@@ -3274,7 +3316,7 @@ function ptCalHtml() {
     const n = ptRoundsDone(e);
     const want = e ? (ptBlockOf(e).rounds || 1) : 0;
     cells += '<div class="mcell' + (iso === todayIso() ? ' today' : '') + '"' +
-      (e ? ' style="cursor:pointer" onclick="ptOpenDay(\'' + iso + '\')"' : '') + '>' +
+      ((e || started) ? ' style="cursor:pointer" onclick="ptOpenDay(\'' + iso + '\')"' : '') + '>' +
       '<div class="dn">' + d + '</div>' +
       (e ? '<div class="pt-cdot" style="background:' + ptDayColor(p) + '"></div><div class="pt-cn">' + n + '/' + want + '</div>'
          : started ? '<div class="pt-cmiss">·</div>' : '') +
@@ -3297,13 +3339,23 @@ function ptCalStep(n) {
   renderPT();
 }
 function ptOpenDay(iso) {
-  const e = ptEntry(iso, false); if (!e) return;
-  const b = ptBlockOf(e);
+  const e = ptEntry(iso, false);
+  const b = e ? ptBlockOf(e) : ptBlock();
+  const past = iso <= todayIso();
   let h = '<div class="pt-det">Block ' + b.n + ' · ' + b.name + ' · ' +
-    ptRoundsDone(e) + ' of ' + (b.rounds || 1) + ' rounds done</div>';
+    (e ? ptRoundsDone(e) : 0) + ' of ' + (b.rounds || 1) + ' rounds done</div>';
+  if (past) h += '<button class="btn primary" style="width:100%;margin-top:10px" onclick="ptAddPastRound(\'' + iso +
+    '\')">＋ Log a completed round for this day</button>';
+  if (!e) {
+    openSheet(new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }), h);
+    return;
+  }
   (e.sessions || []).forEach(s => {
     h += '<div class="pt-card" style="margin:10px 0 0"><h3>Round ' + s.n +
-         '<span class="freq">' + ptHhmm(s.endedAt || s.at) + (s.done ? '' : ' · unfinished') + '</span></h3>';
+         '<span class="freq">' + ptHhmm(s.endedAt || s.at) +
+         (s.backfilled ? ' · added later' : s.done ? '' : ' · unfinished') + '</span></h3>';
+    if (!s.done) h += '<button class="btn" style="margin-bottom:9px" onclick="ptMarkRoundDone(\'' + iso + '\',' + s.n +
+      ')">✓ Mark this round done</button>';
     if (s.pain != null) h += '<div class="pt-det" style="margin-bottom:8px">Worst pain this round: <b style="color:' + ptPainColor(s.pain) + '">' + s.pain + '/10</b></div>';
     s.exercises.forEach(x => {
       const ex = b.ex.find(a => a.key === x.key);
