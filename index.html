@@ -981,6 +981,13 @@ const DIST = {
 // Outdoor workouts carry a free-text location (Franklin: "where did I walk?").
 // Suggestions come from every location logged before, most-used first.
 const OUTDOOR = new Set(['walk', 'run', 'owswim', 'plyo']);
+// Custom types count too - Franklin made her own "Walk" and "Bike".
+function isOutdoor(type) { return OUTDOOR.has(type) || /walk|run|bike|ride|hike|swim/i.test(typeOf(type).full || ''); }
+function locFieldHtml(s) {
+  if (!isOutdoor(s.type)) return '';
+  return `<input class="note-in" id="sess-loc" list="loc-list" oninput="locTyped()" style="min-height:0;margin-bottom:10px" placeholder="📍 Where? (Percy Warner, Shelby Bottoms…)" value="${escapeHtml(s.loc || '')}">
+    <datalist id="loc-list">${pastLocations().map(x => `<option value="${escapeHtml(x)}">`).join('')}</datalist>`;
+}
 function pastLocations() {
   const n = {};
   for (const l of log) if (l.loc) n[l.loc] = (n[l.loc] || 0) + 1;
@@ -1285,6 +1292,7 @@ function _sessionHead(s, typ) {
       <span style="display:flex;align-items:center;gap:8px">${_clockHtml()}${typ && !s.dur ? `<span class="hint">usually ~${typ} min</span>` : ''}</span>
       <button class="btn${exEditMode ? ' editing' : ''}" onclick="toggleExEdit()">${exEditMode ? '✓ Done reorganizing' : '✎ Edit exercises'}</button>
     </div>
+    ${locFieldHtml(s)}
     <textarea class="note-in" id="sess-note" oninput="noteTyped()" style="min-height:44px;margin-bottom:10px" placeholder="Notes for this workout — how it felt, anything to flag…">${escapeHtml(s.note || '')}</textarea>`;
 }
 
@@ -1489,8 +1497,7 @@ function renderSimpleSheet(title) {
         <button class="timer-chip" onclick="pickSessionMin()"><span id="sess-min">${s.min}</span><span class="u"> min</span></button>
         ${DIST[s.type] ? `<button class="timer-chip" onclick="pickSessionDist()"><span id="sess-dist">${s.dist > 0 ? s.dist : '—'}</span><span class="u"> ${DIST[s.type].unit}</span></button>` : ''}
       </div>
-      ${OUTDOOR.has(s.type) ? `<input class="note-in" id="sess-loc" list="loc-list" oninput="locTyped()" style="min-height:0" placeholder="📍 Where? (Percy Warner, Shelby Bottoms…)" value="${escapeHtml(s.loc || '')}">
-      <datalist id="loc-list">${pastLocations().map(x => `<option value="${escapeHtml(x)}">`).join('')}</datalist>` : ''}
+      ${locFieldHtml(s)}
       <textarea class="note-in" id="sess-note" oninput="noteTyped()" placeholder="Optional note — how did it feel?">${escapeHtml(s.note || '')}</textarea>
       <div class="timer-go" style="width:100%">
         <button class="btn" onclick="closeSheet()">Close</button>
