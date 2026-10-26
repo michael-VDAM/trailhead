@@ -327,6 +327,8 @@
     .pt-card h3 { font-size: 15px; margin: 0 0 5px; display: flex; align-items: center; gap: 8px; }
     .pt-card h3 .freq { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted2); background: var(--panel3); padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
     .pt-det { color: var(--muted); font-size: 13px; line-height: 1.55; margin-bottom: 11px; }
+    .pt-howto { display: block; color: var(--accent); font-size: 13px; font-weight: 600; margin: -4px 0 11px; text-decoration: none; }
+    .pt-howto:hover { text-decoration: underline; }
     .pt-sets { display: flex; flex-wrap: wrap; gap: 8px; }
     .pt-sets + .pt-setlbl { margin-top: 12px; }
     .pt-setlbl { display: flex; align-items: baseline; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted2); margin-bottom: 6px; }
@@ -475,7 +477,7 @@
       </button>
       <button class="tile" onclick="switchTab('pt')">
         <span class="em">🤚</span><h3>Rehab</h3>
-        <p>Finger flexor plan — timed holds, per-set logging, pain and range.</p>
+        <p>Your rehab plan — timed holds, per-set logging, pain and notes.</p>
       </button>
     </div>
   </div>
@@ -602,7 +604,7 @@
   <!-- ═══════════ PT / REHAB ═══════════ -->
   <div class="tabpane" id="pane-pt">
     <h2>Rehab</h2>
-    <p class="hint">Log every set, time the holds, track pain and range. Advance on the gate, not the date.</p>
+    <p class="hint">Log every set, time the holds, track pain and notes. Advance on the gate, not the date.</p>
     <div id="pt-body"></div>
   </div>
 
@@ -3039,8 +3041,121 @@ const PT_RULES = [
   ['The nodule gets bigger or more tender', 'Message the PT.'],
 ];
 
+// ─── Second program: core + pelvic floor after a C-section ───────────────────
+// Phases and gates follow the UK postnatal return-to-running guideline (Goom,
+// Donnelly & Brockwell 2019) and ACOG CO 804: advance on criteria, not weeks.
+// Sets/reps are common pelvic-health physio practice (the guideline gives none).
+// Generic content only (public repo) - no dates or personal detail.
+const CORE_BLOCKS = [
+  {
+    n: 1, name: 'Reconnect', weeks: 2, rounds: 1, color: 'var(--swim)', when: 'Weeks 6–8 after birth',
+    goal: 'Breathing, deep core and pelvic floor working together again. Gentle strength, brisk walks.',
+    gate: 'Everything here feels easy, a 30-minute brisk walk is comfortable, and none of the stop signs have shown up. OB has cleared you at your postnatal check.',
+    ex: [
+      { key: 'cbreath', em: '💨', name: 'Connection breath', sets: 2, sec: 0, unit: 'sets of 10',
+        det: 'Lying on your back, knees bent. Breathe in and let the belly and rib cage widen. Breathe out, gently lift the pelvic floor and draw the lower belly in, like zipping up snug jeans. Relax fully between breaths.\n\nUse this same breath-out on the effort of every exercise below.' },
+      { key: 'pfm', em: '⬆️', name: 'Pelvic floor holds', sets: 10, sec: 10, unit: 'holds',
+        det: 'Squeeze and lift as if stopping wind and urine, hold, then fully let go. Work up to 10-second holds. Follow with 10 quick squeezes.\n\nNHS advice is three times a day — do the other two whenever (feeding, the kettle).' },
+      { key: 'heelslide', em: '🦵', name: 'Heel slides', sets: 2, sec: 0, unit: 'sets of 10',
+        det: 'On your back, slide one heel away until the leg is straight, then back. Breathe out as it slides. Pelvis stays still.' },
+      { key: 'bridge', em: '🌉', name: 'Glute bridge', sets: 2, sec: 0, unit: 'sets of 10',
+        det: 'Breathe out, connect, then lift the hips until shoulders, hips and knees line up. Lower slowly.' },
+      { key: 'sidelegs', em: '↔️', name: 'Side-lying leg raise', sets: 2, sec: 0, unit: 'sets of 10 each side',
+        det: 'On your side, bottom knee bent, top leg straight and slightly back. Lift and lower slowly without rolling the hips back.' },
+      { key: 'wallpush', em: '🧱', name: 'Wall push-ups', sets: 2, sec: 0, unit: 'sets of 10',
+        det: 'Hands on the wall at chest height. Breathe out as you push away. Watch the belly — no doming.' },
+      { key: 'squat', em: '🪑', name: 'Sit-to-stand squat', sets: 2, sec: 0, unit: 'sets of 10',
+        det: 'From a chair, breathe out and stand, then sit back down slowly. Lifting at home: nothing heavier than the baby in the car seat.' },
+      { key: 'scar', em: '🩹', name: 'Scar massage', sets: 1, sec: 120, unit: '',
+        det: 'Only once the incision has fully closed and your OB or midwife has said yes. Start around the scar with gentle circles and side-to-side strokes, then over it as it gets comfortable.' },
+      { key: 'walkc', em: '🚶', name: 'Brisk walk', sets: 1, sec: 0, unit: '',
+        det: 'Build toward 30 minutes most days. Walks you log in Workout count too. An exercise bike is fine if the saddle is comfortable.' },
+    ],
+  },
+  {
+    n: 2, name: 'Build', weeks: 4, rounds: 1, color: 'var(--accent)', when: 'Weeks 8–12',
+    goal: 'Load the core through movement, single-leg strength, low-impact cardio.',
+    gate: 'Dead bug with opposite arm and leg and no doming. No stop signs. Bleeding has stopped and the scar has healed (needed before swimming).',
+    ex: [
+      { key: 'cbreath', em: '💨', name: 'Connection breath', sets: 1, sec: 0, unit: 'set of 10', det: 'Warm-up, same as before.' },
+      { key: 'pfm', em: '⬆️', name: 'Pelvic floor holds', sets: 10, sec: 10, unit: 'holds',
+        det: '10-second holds then 10 quick squeezes. Keep doing these through every phase.' },
+      { key: 'birddog', em: '🐕', name: 'Bird dog', sets: 2, sec: 0, unit: 'sets of 8 each side',
+        det: 'On hands and knees, breathe out and reach one arm and the opposite leg long. Back stays flat, hips level.' },
+      { key: 'deadbug', em: '🪲', name: 'Dead bug (progress)', sets: 2, sec: 0, unit: 'sets of 8',
+        det: 'Level 1: knees up at 90°, tap one heel down at a time. Level 2: slide one leg long. Level 3: opposite arm and leg together. Only move up a level while the belly stays flat.' },
+      { key: 'splitsquat', em: '🦿', name: 'Split squat', sets: 2, sec: 0, unit: 'sets of 8 each side',
+        det: 'One foot forward, one back. Lower straight down, back knee toward the floor, then up. Hold a wall for balance at first.' },
+      { key: 'slbridge', em: '🌉', name: 'Single-leg bridge', sets: 2, sec: 0, unit: 'sets of 8 each side',
+        det: 'Bridge on one leg, the other knee lifted. Hips stay level.' },
+      { key: 'sidelegs', em: '↔️', name: 'Side-lying leg raise', sets: 2, sec: 0, unit: 'sets each side',
+        det: 'Build toward 20 in a row each side — that is the strength target before running.' },
+      { key: 'cardio2', em: '🏊', name: 'Low-impact cardio', sets: 1, sec: 0, unit: '',
+        det: 'Brisk walk, bike, or pool swimming once bleeding has stopped and the scar has fully healed. Yoga or pilates are fine — skip crunch-type moves, and hold off on full planks and chaturanga until you can do them with no doming.' },
+    ],
+  },
+  {
+    n: 3, name: 'Impact readiness', weeks: 4, rounds: 1, color: 'var(--tabata)', when: 'Week 12 onward',
+    goal: 'Pass the guideline’s load and impact tests before any running.',
+    gate: 'All seven tests with no pain, heaviness, dragging or leaking: walk 30 min · stand on one leg 10 s · 10 single-leg squats each leg · jog on the spot 1 min · 10 forward bounds · 10 hops each leg · 10 running-man each side.',
+    ex: [
+      { key: 'pfm', em: '⬆️', name: 'Pelvic floor holds', sets: 10, sec: 10, unit: 'holds', det: 'Keep them going.' },
+      { key: 'slstand', em: '🦩', name: 'Single-leg stand', sets: 2, sec: 10, unit: 'holds (one each leg)',
+        det: 'One of the impact tests. Steady for 10 seconds on each leg.' },
+      { key: 'slsquat', em: '🦵', name: 'Single-leg squat', sets: 2, sec: 0, unit: 'sets of 10 (one each leg)',
+        det: 'Shallow is fine — knee tracks over the toes, hips level. Hold a counter at first.' },
+      { key: 'calf', em: '🦶', name: 'Single-leg calf raise', sets: 2, sec: 0, unit: 'sets (one each leg)',
+        det: 'Rise onto the ball of one foot and lower slowly. Build toward 20 in a row each leg.' },
+      { key: 'slbridge', em: '🌉', name: 'Single-leg bridge', sets: 2, sec: 0, unit: 'sets (one each leg)',
+        det: 'Build toward 20 in a row each side.' },
+      { key: 'jog1', em: '🏃', name: 'Jog on the spot', sets: 1, sec: 60, unit: '',
+        det: 'One minute. Stop if you feel heaviness, dragging or any leaking.' },
+      { key: 'bounds', em: '🦘', name: 'Bounds, hops, running man', sets: 3, sec: 0, unit: 'tests',
+        det: 'One button each: 10 forward bounds · 10 hops on each leg · 10 running-man each side (stand on one leg, swing the opposite arm and knee). Only once the strength work above feels solid.' },
+    ],
+  },
+  {
+    n: 4, name: 'Return to running', weeks: 8, rounds: 1, color: 'var(--success)', when: 'Week 16 onward (3–6 months)',
+    goal: 'Graded running, heavier lifting, full yoga and pilates, open water.',
+    gate: 'Running 30 minutes comfortably, three times a week, with no stop signs.',
+    ex: [
+      { key: 'pfm', em: '⬆️', name: 'Pelvic floor holds', sets: 10, sec: 10, unit: 'holds', det: 'Still worth a minute a day.' },
+      { key: 'c25k', em: '🏃', name: 'Run–walk (Couch to 5K)', sets: 1, sec: 0, unit: '',
+        det: 'Three runs a week, a rest day between. Build time first, speed later. Repeat a week rather than push through symptoms.' },
+      { key: 'strength4', em: '🏋️', name: 'Strength session', sets: 1, sec: 0, unit: '',
+        det: 'Twice a week. Squats, lunges, deadlifts and push-ups, building load gradually. Full planks once you can hold them with no doming.' },
+      { key: 'owswim', em: '🌊', name: 'Open water swim', sets: 1, sec: 0, unit: '',
+        det: 'No guideline gives open water its own date. Wait until the scar is healed and pool swimming feels easy, and check with your OB.' },
+    ],
+  },
+];
+const CORE_RULES = [
+  ['Pain, redness, warmth or discharge at the incision', 'Stop and call the OB.'],
+  ['Bleeding comes back or gets heavier with exercise', 'Stop and call the OB. Bleeding past 8 weeks that is not a period needs checking too.'],
+  ['Heaviness, pressure, bulging or dragging down below', 'Stop that exercise and see a pelvic floor physio.'],
+  ['Any leaking of urine or stool', 'Drop back a level and see a pelvic floor physio.'],
+  ['Belly domes or forms a ridge down the middle', 'Make the move easier until it stays flat. A physio can check the gap.'],
+  ['Pelvic or low back pain', 'Ease off and get it checked.'],
+  ['Worse the next day', 'Repeat the last level. Do not advance.'],
+];
+const CORE_SOURCES = [
+  ['Returning to running postnatal — guideline (Goom, Donnelly & Brockwell, 2019)', 'https://athleticsni.org/download/files/Returning_to_running_postnatal_guideline_for_medical_health_and_fitness_professionals_managing_this_population.05.pdf'],
+  ['ACOG Committee Opinion 804 — exercise in pregnancy and postpartum (summary)', 'https://opqic.org/acog-committee-opinion-no-804-physical-activity-and-exercise-during-pregnancy-and-the-postpartum-period/'],
+  ['Diastasis recti exercise review (Gluppe et al., 2021)', 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8721086/'],
+  ['NHS Whittington — exercise after a caesarean', 'https://www.whittington.nhs.uk/document.ashx?id=15201'],
+  ['NHS Walsall — caesarean section exercises', 'https://www.walsallhealthcare.nhs.uk/wp-content/uploads/2022/11/Caesarean-Section-Exercises.pdf'],
+];
+const PT_PROGRAMS = {
+  finger: { name: 'Finger flexor rehab', em: '✋', blocks: PT_BLOCKS, rules: PT_RULES, sources: [],
+            pain: 'Worst pain this round, out of 10', note: 'Which positions, how it felt, anything for the PT…' },
+  core:   { name: 'Core + pelvic floor after a C-section', em: '🌱', blocks: CORE_BLOCKS, rules: CORE_RULES, sources: CORE_SOURCES,
+            pain: 'Worst discomfort this round (incision, belly, pelvic), out of 10',
+            note: 'How it felt, any doming, pressure or leaking, anything for the OB or physio…' },
+};
+// Instruction links per exercise key: [url, source]. Credible sources only.
+const PT_HOWTO = {};
 const PT_EX_NAMES = {};
-for (const b of PT_BLOCKS) for (const x of b.ex) PT_EX_NAMES[x.key] = x.name;
+for (const pr of Object.values(PT_PROGRAMS)) for (const b of pr.blocks) for (const x of b.ex) PT_EX_NAMES[x.key] = PT_EX_NAMES[x.key] || x.name;
 
 let ptPlan = null, ptLog = [], ptTimer = null, ptCalMonth = null;
 
@@ -3048,8 +3163,26 @@ function seedPt() { return { v: 1, start: PT_START, block: 1, blockStart: PT_STA
 function savePt() { try { localStorage.setItem(PT_KEY, JSON.stringify(ptPlan)); } catch {} cloudPush('pt'); }
 function savePtLog() { try { localStorage.setItem(PT_LOG_KEY, JSON.stringify(ptLog)); } catch {} cloudPush('ptlog'); }
 
-function ptBlock() { return PT_BLOCKS[Math.min(PT_BLOCKS.length - 1, Math.max(0, (ptPlan.block || 1) - 1))]; }
-function ptBlockOf(e) { return PT_BLOCKS[Math.min(PT_BLOCKS.length - 1, Math.max(0, ((e && e.block) || 1) - 1))]; }
+// Which program this person is on. A plan from before programs existed that has
+// been used is the finger plan; a fresh one has no program until it is chosen.
+function ptProgKey() {
+  if (ptPlan.program) return ptPlan.program;
+  return ((ptPlan.gates || []).length || live(ptLog).length) ? 'finger' : null;
+}
+function ptProg() { return PT_PROGRAMS[ptProgKey() || 'finger']; }
+function ptBlocks() { return ptProg().blocks; }
+function ptBlock() { const B = ptBlocks(); return B[Math.min(B.length - 1, Math.max(0, (ptPlan.block || 1) - 1))]; }
+function ptBlockOf(e) { const B = (PT_PROGRAMS[(e && e.prog) || 'finger'] || PT_PROGRAMS.finger).blocks; return B[Math.min(B.length - 1, Math.max(0, ((e && e.block) || 1) - 1))]; }
+// Switching keeps each program's place, so going back resumes where you were.
+function ptChooseProgram(k) {
+  const cur = ptProgKey();
+  if (cur === k) return;
+  ptPlan.saved = ptPlan.saved || {};
+  if (cur) ptPlan.saved[cur] = { start: ptPlan.start, block: ptPlan.block, blockStart: ptPlan.blockStart, gates: ptPlan.gates || [] };
+  Object.assign(ptPlan, ptPlan.saved[k] || { start: todayIso(), block: 1, blockStart: todayIso(), gates: [] });
+  ptPlan.program = k;
+  savePt(); renderPT();
+}
 function ptDaysSince(iso) { return Math.floor((new Date(todayIso() + 'T12:00:00') - new Date(iso + 'T12:00:00')) / 864e5) + 1; }
 function ptPainColor(v) { return v <= 3 ? 'var(--success)' : v <= 5 ? 'var(--tabata)' : 'var(--danger)'; }
 function ptFmtSec(s) { return s >= 60 ? Math.round(s / 60) + ' min' : s + 's'; }
@@ -3087,10 +3220,11 @@ function ptMigrateLog() {
   return dirty;
 }
 function ptEntry(date, create) {
-  let e = live(ptLog).find(x => x.date === date);
+  const pk = ptProgKey() || 'finger';
+  let e = live(ptLog).find(x => x.date === date && (x.prog || 'finger') === pk);
   if (!e && create) {
     e = { v: 3, id: 'pt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-          date, block: ptPlan.block, sessions: [], ts: Date.now() };
+          date, prog: pk, block: ptPlan.block, sessions: [], ts: Date.now() };
     ptLog.push(e);
   }
   if (e) ptMigrateEntry(e);
@@ -3194,7 +3328,7 @@ function ptRoundNote(val) {
 }
 
 function ptClearGate() {
-  if (ptPlan.block >= PT_BLOCKS.length) { showToast('That was the last block — this one is done'); return; }
+  if (ptPlan.block >= ptBlocks().length) { showToast('That was the last block — this one is done'); return; }
   const next = ptPlan.block + 1;
   if (!confirm('Gate cleared?\n\nThis starts block ' + next + ' from today. If any part of the gate is not met, repeat the block instead.')) return;
   ptPlan.gates = ptPlan.gates || [];
@@ -3209,7 +3343,8 @@ function ptGoBlock(n) {
 }
 function ptRestart() {
   if (!confirm('Restart the plan from today? Your logged days are kept.')) return;
-  ptPlan = seedPt(); ptPlan.start = ptPlan.blockStart = todayIso(); savePt(); renderPT();
+  const pk = ptPlan.program, sv = ptPlan.saved;
+  ptPlan = seedPt(); ptPlan.start = ptPlan.blockStart = todayIso(); ptPlan.program = pk; ptPlan.saved = sv; savePt(); renderPT();
 }
 
 // ─── Render ─────────────────────────────────────────────────────────────────
@@ -3249,6 +3384,13 @@ function ptHhmm(ts) { return ts ? new Date(ts).toLocaleTimeString(undefined, { h
 function renderPT() {
   const host = document.getElementById('pt-body');
   if (!host || !ptPlan) return;
+  if (!ptProgKey()) {
+    host.innerHTML = '<div class="pt-card"><h3>Pick a rehab program</h3>' +
+      '<div class="pt-det">Each person picks their own. You can switch later and it remembers where you were.</div>' +
+      Object.entries(PT_PROGRAMS).map(([k, pr]) => '<button class="btn primary" style="width:100%;margin-top:9px" onclick="ptChooseProgram(\'' + k + '\')">' +
+        pr.em + ' ' + escapeHtml(pr.name) + '</button>').join('') + '</div>';
+    return;
+  }
   const b = ptBlock(), e = ptEntry(todayIso(), false);
   const bd = ptDaysSince(ptPlan.blockStart), total = b.weeks * 7;
   const pct = Math.max(4, Math.min(100, Math.round(bd / total * 100)));
@@ -3261,12 +3403,13 @@ function renderPT() {
   let h = '';
 
   h += '<div class="pt-hero" style="--b-color:' + b.color + '">' +
+         '<div class="sub">' + ptProg().em + ' ' + escapeHtml(ptProg().name) + (b.when ? ' · ' + escapeHtml(b.when) : '') + '</div>' +
          '<h2>Block ' + b.n + ' · ' + b.name + '</h2>' +
          '<div class="sub">' + escapeHtml(b.goal) + '</div>' +
          '<div class="pt-prog"><i style="width:' + pct + '%"></i></div>' +
          '<div class="sub">Day ' + bd + ' of ' + total + ' in this block · day ' + ptDaysSince(ptPlan.start) + ' overall</div>' +
          '<div class="pt-blocks">' +
-           PT_BLOCKS.map(x => '<button class="' + (x.n === b.n ? 'on' : '') + '" style="--b-color:' + x.color +
+           ptBlocks().map(x => '<button class="' + (x.n === b.n ? 'on' : '') + '" style="--b-color:' + x.color +
              '" onclick="ptGoBlock(' + x.n + ')">' + x.n + '. ' + x.name + '</button>').join('') +
          '</div>' +
        '</div>';
@@ -3294,15 +3437,16 @@ function renderPT() {
            '<h3>' + ex.em + ' ' + escapeHtml(ex.name) +
              (ex.unit ? '<span class="freq">' + ((ex.groups || 1) > 1 ? ex.groups + ' × ' + ex.sets : ex.sets) + ' ' + ex.unit + '</span>' : '') + '</h3>' +
            '<div class="pt-det">' + escapeHtml(ex.det) + '</div>' +
+           (PT_HOWTO[ex.key] ? '<a class="pt-howto" href="' + PT_HOWTO[ex.key][0] + '" target="_blank" rel="noopener">▶ How to do it · ' + escapeHtml(PT_HOWTO[ex.key][1]) + '</a>' : '') +
            ptSetBtns(ex, rec) +
          '</div>';
   }
 
   // ── One pain score and one note for the round, then close it.
   h += '<div class="pt-card"><h3>How did round ' + roundNo + ' go?</h3>' +
-         '<div class="pt-pain"><span class="lbl">Worst pain this round, out of 10</span>' +
+         '<div class="pt-pain"><span class="lbl">' + escapeHtml(ptProg().pain) + '</span>' +
            ptChipRow(cur ? cur.pain : null, 'ptSetRoundPain(@)') + '</div>' +
-         '<textarea class="pt-note" style="min-height:64px" placeholder="Which positions, how it felt, anything for the PT…" ' +
+         '<textarea class="pt-note" style="min-height:64px" placeholder="' + escapeHtml(ptProg().note) + '" ' +
            'onchange="ptRoundNote(this.value)">' + escapeHtml(cur ? (cur.note || '') : '') + '</textarea>' +
        '</div>';
 
@@ -3313,16 +3457,22 @@ function renderPT() {
   h += '<div class="pt-card"><h3>🚪 Gate out of block ' + b.n + '</h3>' +
          '<div class="pt-gate">' + escapeHtml(b.gate) + '</div>' +
          '<button class="btn primary" style="margin-top:11px;width:100%" onclick="ptClearGate()">✓ Cleared it — ' +
-           (ptPlan.block < PT_BLOCKS.length ? 'start block ' + (b.n + 1) : 'plan complete') + '</button>' +
+           (ptPlan.block < ptBlocks().length ? 'start block ' + (b.n + 1) : 'plan complete') + '</button>' +
          '<div class="pt-det" style="margin:9px 0 0">If any part of the gate is not met, repeat the block rather than split the difference.</div>' +
        '</div>';
 
   h += '<div class="pt-card"><h3>🛑 Stop rules</h3>' +
-         PT_RULES.map(r => '<div class="pt-rule"><span class="w">' + escapeHtml(r[0]) + '</span><span>' + escapeHtml(r[1]) + '</span></div>').join('') +
+         ptProg().rules.map(r => '<div class="pt-rule"><span class="w">' + escapeHtml(r[0]) + '</span><span>' + escapeHtml(r[1]) + '</span></div>').join('') +
        '</div>';
 
+  if (ptProg().sources.length) h += '<div class="pt-card"><h3>📚 Where this comes from</h3>' +
+    '<div class="pt-det">Phases and gates follow the guidelines below. Sets and reps are common pelvic-health physio practice — the guidelines do not give exact numbers. Your OB and a pelvic floor physio outrank this plan.</div>' +
+    ptProg().sources.map(x => '<a class="pt-howto" href="' + x[1] + '" target="_blank" rel="noopener">' + escapeHtml(x[0]) + '</a>').join('') + '</div>';
+
   h += '<p class="hint" style="margin-top:4px">Started ' + ptPlan.start +
-       '. <button class="btn" style="margin-left:6px" onclick="ptRestart()">↺ Restart from today</button></p>';
+       '. <button class="btn" style="margin-left:6px" onclick="ptRestart()">↺ Restart from today</button></p>' +
+       '<p class="hint">Program: ' + Object.entries(PT_PROGRAMS).map(([k, pr]) =>
+         '<button class="btn' + (k === ptProgKey() ? ' editing' : '') + '" style="margin:4px 6px 0 0" onclick="ptChooseProgram(\'' + k + '\')">' + pr.em + ' ' + escapeHtml(pr.name) + '</button>').join('') + '</p>';
 
   host.innerHTML = h;
 }
