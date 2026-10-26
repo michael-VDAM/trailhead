@@ -3041,21 +3041,22 @@ const PT_RULES = [
   ['The nodule gets bigger or more tender', 'Message the PT.'],
 ];
 
-// ─── Second program: core + pelvic floor after a C-section ───────────────────
+// ─── Second program: core rebuild after abdominal surgery ─────────────────────
+// Same incision recovery as a C-section, so the C-section evidence applies.
 // Phases and gates follow the UK postnatal return-to-running guideline (Goom,
 // Donnelly & Brockwell 2019) and ACOG CO 804: advance on criteria, not weeks.
 // Sets/reps are common pelvic-health physio practice (the guideline gives none).
 // Generic content only (public repo) - no dates or personal detail.
 const CORE_BLOCKS = [
   {
-    n: 1, name: 'Reconnect', weeks: 2, rounds: 1, color: 'var(--swim)', when: 'Weeks 6–8 after birth',
+    n: 1, name: 'Reconnect', weeks: 2, rounds: 1, color: 'var(--swim)', when: 'Weeks 6–8 after surgery',
     goal: 'Breathing, deep core and pelvic floor working together again. Gentle strength, brisk walks.',
-    gate: 'Everything here feels easy, a 30-minute brisk walk is comfortable, and none of the stop signs have shown up. OB has cleared you at your postnatal check.',
+    gate: 'Everything here feels easy, a 30-minute brisk walk is comfortable, and none of the stop signs have shown up. Your OB or surgeon has cleared you at your follow-up.',
     ex: [
       { key: 'cbreath', em: '💨', name: 'Connection breath', sets: 2, sec: 0, unit: 'sets of 10',
         det: 'Lying on your back, knees bent. Breathe in and let the belly and rib cage widen. Breathe out, gently lift the pelvic floor and draw the lower belly in, like zipping up snug jeans. Relax fully between breaths.\n\nUse this same breath-out on the effort of every exercise below.' },
       { key: 'pfm', em: '⬆️', name: 'Pelvic floor holds', sets: 10, sec: 10, unit: 'holds',
-        det: 'Squeeze and lift as if stopping wind and urine, hold, then fully let go. Work up to 10-second holds. Follow with 10 quick squeezes.\n\nNHS advice is three times a day — do the other two whenever (feeding, the kettle).' },
+        det: 'Squeeze and lift as if stopping wind and urine, hold, then fully let go. Work up to 10-second holds. Follow with 10 quick squeezes.\n\nNHS advice is three times a day — do the other two whenever (waiting for the kettle, at a red light).' },
       { key: 'heelslide', em: '🦵', name: 'Heel slides', sets: 2, sec: 0, unit: 'sets of 10',
         det: 'On your back, slide one heel away until the leg is straight, then back. Breathe out as it slides. Pelvis stays still.' },
       { key: 'bridge', em: '🌉', name: 'Glute bridge', sets: 2, sec: 0, unit: 'sets of 10',
@@ -3065,9 +3066,9 @@ const CORE_BLOCKS = [
       { key: 'wallpush', em: '🧱', name: 'Wall push-ups', sets: 2, sec: 0, unit: 'sets of 10',
         det: 'Hands on the wall at chest height. Breathe out as you push away. Watch the belly — no doming.' },
       { key: 'squat', em: '🪑', name: 'Sit-to-stand squat', sets: 2, sec: 0, unit: 'sets of 10',
-        det: 'From a chair, breathe out and stand, then sit back down slowly. Lifting at home: nothing heavier than the baby in the car seat.' },
+        det: 'From a chair, breathe out and stand, then sit back down slowly. Lifting at home: keep it light — the guideline’s starting cap is about 30 lb, built up slowly.' },
       { key: 'scar', em: '🩹', name: 'Scar massage', sets: 1, sec: 120, unit: '',
-        det: 'Only once the incision has fully closed and your OB or midwife has said yes — NHS leaflets differ on when (some say 6–8 weeks, newer ones 12). Start around the scar with gentle circles and side-to-side strokes, then over it as it gets comfortable.' },
+        det: 'Only once the incision has fully closed and your OB or surgeon has said yes — NHS leaflets differ on when (some say 6–8 weeks, newer ones 12). Start around the scar with gentle circles and side-to-side strokes, then over it as it gets comfortable.' },
       { key: 'walkc', em: '🚶', name: 'Brisk walk', sets: 1, sec: 0, unit: '',
         det: 'Build toward 30 minutes most days. Walks you log in Workout count too. An exercise bike is fine if the saddle is comfortable.' },
     ],
@@ -3131,7 +3132,7 @@ const CORE_BLOCKS = [
 ];
 const CORE_RULES = [
   ['Pain, redness, warmth or discharge at the incision', 'Stop and call the OB.'],
-  ['Bleeding comes back or gets heavier with exercise', 'Stop and call the OB. Bleeding past 8 weeks that is not a period needs checking too.'],
+  ['Bleeding comes back or gets heavier with exercise', 'Stop and call the OB.'],
   ['Heaviness, pressure, bulging or dragging down below', 'Stop that exercise and see a pelvic floor physio.'],
   ['Any leaking of urine or stool', 'Drop back a level and see a pelvic floor physio.'],
   ['Belly domes or forms a ridge down the middle', 'Make the move easier until it stays flat. A physio can check the gap.'],
@@ -3148,7 +3149,7 @@ const CORE_SOURCES = [
 const PT_PROGRAMS = {
   finger: { name: 'Finger flexor rehab', em: '✋', blocks: PT_BLOCKS, rules: PT_RULES, sources: [],
             pain: 'Worst pain this round, out of 10', note: 'Which positions, how it felt, anything for the PT…' },
-  core:   { name: 'Core + pelvic floor after a C-section', em: '🌱', blocks: CORE_BLOCKS, rules: CORE_RULES, sources: CORE_SOURCES,
+  core:   { name: 'Core rebuild after abdominal surgery', em: '🌱', blocks: CORE_BLOCKS, rules: CORE_RULES, sources: CORE_SOURCES,
             pain: 'Worst discomfort this round (incision, belly, pelvic), out of 10',
             note: 'How it felt, any doming, pressure or leaking, anything for the OB or physio…' },
 };
@@ -3485,7 +3486,7 @@ function renderPT() {
        '</div>';
 
   if (ptProg().sources.length) h += '<div class="pt-card"><h3>📚 Where this comes from</h3>' +
-    '<div class="pt-det">Phases and gates follow the guidelines below. Sets and reps are common pelvic-health physio practice — the guidelines do not give exact numbers. Your OB and a pelvic floor physio outrank this plan.</div>' +
+    '<div class="pt-det">These guidelines are written for recovery after a C-section, which is the same incision recovery. Phases and gates follow them. Sets and reps are common pelvic-health physio practice — the guidelines do not give exact numbers. Your OB or surgeon and a physio outrank this plan.</div>' +
     ptProg().sources.map(x => '<a class="pt-howto" href="' + x[1] + '" target="_blank" rel="noopener">' + escapeHtml(x[0]) + '</a>').join('') + '</div>';
 
   h += '<p class="hint" style="margin-top:4px">Started ' + ptPlan.start +
