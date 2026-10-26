@@ -3067,7 +3067,7 @@ const CORE_BLOCKS = [
       { key: 'squat', em: '🪑', name: 'Sit-to-stand squat', sets: 2, sec: 0, unit: 'sets of 10',
         det: 'From a chair, breathe out and stand, then sit back down slowly. Lifting at home: nothing heavier than the baby in the car seat.' },
       { key: 'scar', em: '🩹', name: 'Scar massage', sets: 1, sec: 120, unit: '',
-        det: 'Only once the incision has fully closed and your OB or midwife has said yes. Start around the scar with gentle circles and side-to-side strokes, then over it as it gets comfortable.' },
+        det: 'Only once the incision has fully closed and your OB or midwife has said yes — NHS leaflets differ on when (some say 6–8 weeks, newer ones 12). Start around the scar with gentle circles and side-to-side strokes, then over it as it gets comfortable.' },
       { key: 'walkc', em: '🚶', name: 'Brisk walk', sets: 1, sec: 0, unit: '',
         det: 'Build toward 30 minutes most days. Walks you log in Workout count too. An exercise bike is fine if the saddle is comfortable.' },
     ],
@@ -3153,7 +3153,26 @@ const PT_PROGRAMS = {
             note: 'How it felt, any doming, pressure or leaking, anything for the OB or physio…' },
 };
 // Instruction links per exercise key: [url, source]. Credible sources only.
-const PT_HOWTO = {};
+const PT_HOWTO = {
+  cbreath: ['https://www.ruh.nhs.uk/patients/patient_information/PHY077_Functional_pelvic_floor_exercise_level_1.pdf', 'NHS Bath, exercises 1–2'],
+  pfm: ['https://www.ruh.nhs.uk/patients/patient_information/PHY031_Pelvic_Floor_Exercises.pdf', 'NHS Bath'],
+  heelslide: ['https://www.plymouthhospitals.nhs.uk/display-pil/pil-post-caesarean-section-c-section--5733/', 'NHS Plymouth (“one leg stretch”)'],
+  bridge: ['https://www.ruh.nhs.uk/patients/patient_information/PHY077_Functional_pelvic_floor_exercise_level_1.pdf', 'NHS Bath, exercise 3'],
+  sidelegs: ['https://www.nth.nhs.uk/resources/optimise-cancer-prehabilitation/', 'NHS North Tees'],
+  wallpush: ['https://www.nth.nhs.uk/resources/optimise-cancer-prehabilitation/', 'NHS North Tees'],
+  squat: ['https://www.ruh.nhs.uk/patients/patient_information/PHY077_Functional_pelvic_floor_exercise_level_1.pdf', 'NHS Bath, exercise 4b'],
+  scar: ['https://www.royalberkshire.nhs.uk/media/1kzkbb30/physio-scar-tissue-mobilisation-for-perineal-and-cs-scars.pdf', 'NHS Royal Berkshire'],
+  birddog: ['https://www.ruh.nhs.uk/patients/patient_information/PHY042_Progressive_Abdominal_Strengthening.pdf', 'NHS Bath, page 3'],
+  deadbug: ['https://www.ruh.nhs.uk/patients/patient_information/PHY079_Functional_pelvic_floor_exercise_level_3.pdf', 'NHS Bath, exercises 5a–5c'],
+  splitsquat: ['https://www.ruh.nhs.uk/patients/patient_information/PHY079_Functional_pelvic_floor_exercise_level_3.pdf', 'NHS Bath (a harder, back-foot-raised version)'],
+  slbridge: ['https://www.ruh.nhs.uk/patients/patient_information/PHY079_Functional_pelvic_floor_exercise_level_3.pdf', 'NHS Bath, exercises 1a–1b'],
+  calf: ['https://www.nth.nhs.uk/resources/optimise-cancer-prehabilitation/', 'NHS North Tees'],
+  slsquat: ['https://www.wwl.nhs.uk/pdfreader/accessiblePDF/cnv-wwl-68ca8bce8ec828.01098451', 'NHS Wigan, exercise 1'],
+  slstand: ['https://athleticsni.org/download/files/Returning_to_running_postnatal_guideline_for_medical_health_and_fitness_professionals_managing_this_population.05.pdf', '2019 guideline, page 16'],
+  jog1: ['https://athleticsni.org/download/files/Returning_to_running_postnatal_guideline_for_medical_health_and_fitness_professionals_managing_this_population.05.pdf', '2019 guideline, page 16'],
+  bounds: ['https://athleticsni.org/download/files/Returning_to_running_postnatal_guideline_for_medical_health_and_fitness_professionals_managing_this_population.05.pdf', '2019 guideline, page 16'],
+  c25k: ['https://www.nhs.uk/better-health/get-active/get-running-with-couch-to-5k/', 'NHS Couch to 5K'],
+};
 const PT_EX_NAMES = {};
 for (const pr of Object.values(PT_PROGRAMS)) for (const b of pr.blocks) for (const x of b.ex) PT_EX_NAMES[x.key] = PT_EX_NAMES[x.key] || x.name;
 

@@ -43,6 +43,12 @@ Finger flexor rehab — three blocks over six weeks, seeded from Michael's PT pl
 - Collections `pt` (object) + `ptlog` (array, key `id`), both `owner:'me'` like the workout plan/log.
 - `PT_BLOCKS` / `PT_RULES` carry generic rehab content only, per convention 7 — no injury detail in committed constants.
 
+### Rehab programs (added 2026-10-25)
+- `PT_PROGRAMS` holds one entry per program: `finger` (the original) and `core` (core + pelvic floor after a C-section, Franklin's). Each has its own blocks, rules, sources, pain label and note prompt. `ptPlan.program` says which one this person is on. A plan with no `program` that has gates or log entries is `finger`; a fresh one shows a picker. `ptChooseProgram()` stashes the current program's place in `ptPlan.saved`, so switching back resumes it.
+- Log entries carry `prog`, and `ptEntry` filters on it. Entries without `prog` are finger.
+- The core program follows the 2019 UK postnatal return-to-running guideline and ACOG CO 804. Sets and reps are common physio practice, and the app says so. `PT_HOWTO` maps each exercise key to a credible instruction link (NHS leaflets). Add links only from credible sources.
+- Outdoor workouts (walk, run, owswim, and custom types named walk/run/bike/hike/swim) carry a free-text `loc`, suggested from past locations. `swim` is now labelled Pool Swim; `owswim` is Open Water Swim.
+
 ## Hikes + Eats modules (added 2026-08-09)
 - **HIKES_DB**: 59 researched trails ≤2h from The Nations (26 from their sheet, verified + corrected; 33 new finds). Fields: distance/gain/difficulty/drive-min/payoff/water tags/dogs/AllTrails URL/permit notes. Drive times from 37209.
 - **EATS_DB**: 152 Nashville restaurants — their "Self Made" list (with personal `us:` notes), Lucia's guide, and Aug-2026 research (Nations-heavy). Status o/c (Nashville closures tracked: Joyland, Pelican & Pig, Margot, Burger Up, 404 Kitchen…), Michelin/Beard flags.
